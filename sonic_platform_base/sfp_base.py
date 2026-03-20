@@ -9,6 +9,7 @@ import sys
 from . import device_base
 
 from .sonic_xcvr.xcvr_api_factory import XcvrApiFactory
+from .sonic_xcvr.api.xcvr_api import XcvrApi
 
 class SfpBase(device_base.DeviceBase):
     """
@@ -491,3 +492,9 @@ class SfpBase(device_base.DeviceBase):
         Removes the cached XcvrApi so that the next get_xcvr_api() call will refresh it.
         """
         self._xcvr_api = None
+
+    def set_xcvr_api(self, xcvr_api: XcvrApi):
+        """
+        Sets the XcvrApi directly, bypassing the factory entirely. 
+        """
+        self._xcvr_api = xcvr_api
