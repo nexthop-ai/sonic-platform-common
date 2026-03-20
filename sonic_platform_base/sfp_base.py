@@ -8,7 +8,7 @@
 import sys
 from . import device_base
 
-from .sonic_xcvr.xcvr_api_factory import XcvrApiFactory
+from .sonic_xcvr.xcvr_api_factory import XcvrApiFactory, XcvrApiConfig
 
 class SfpBase(device_base.DeviceBase):
     """
@@ -77,6 +77,7 @@ class SfpBase(device_base.DeviceBase):
         self._thermal_list = []
         self._bank = bank
         self._xcvr_api_factory = XcvrApiFactory(self.read_eeprom, self.write_eeprom)
+        self._xcvr_api_config = None
         self._xcvr_api = None
 
     @property
@@ -473,7 +474,7 @@ class SfpBase(device_base.DeviceBase):
         """
         Updates the XcvrApi associated with this SFP
         """
-        self._xcvr_api = self._xcvr_api_factory.create_xcvr_api(bank=self.bank)
+        self._xcvr_api = self._xcvr_api_factory.create_xcvr_api(self.bank, self._xcvr_api_config)
 
     def get_xcvr_api(self):
         """
@@ -491,3 +492,11 @@ class SfpBase(device_base.DeviceBase):
         Removes the cached XcvrApi so that the next get_xcvr_api() call will refresh it.
         """
         self._xcvr_api = None
+
+    def set_xcvr_api_config(self, xcvr_api_config: XcvrApiConfig):
+        """
+        Sets the XcvrApiConfig to bypass auto-detection and use specific codes,
+        memory map, and API classes.
+        """
+        self._xcvr_api_config = xcvr_api_config
+        self.remove_xcvr_api()
