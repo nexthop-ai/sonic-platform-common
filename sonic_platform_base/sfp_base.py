@@ -8,7 +8,7 @@
 import sys
 from . import device_base
 
-from .sonic_xcvr.xcvr_api_factory import XcvrApiFactory
+from .sonic_xcvr.xcvr_api_factory import XcvrApiFactory, XcvrApiConfig
 
 class SfpBase(device_base.DeviceBase):
     """
@@ -71,12 +71,23 @@ class SfpBase(device_base.DeviceBase):
     SFP_PORT_TYPE_BIT_OSFP                = 0x00001000
     SFP_PORT_TYPE_BIT_SFP_DD              = 0x00002000
 
-    def __init__(self, bank=0):
+    def __init__(self, bank=0, xcvr_api_config: XcvrApiConfig | None = None):
+        """
+        Initialize the SfpBase.
+
+        Args:
+            bank: The bank number for this SFP
+            xcvr_api_config: Optional XcvrApiConfig to bypass auto-detection
+                             and use specific codes, memory map, and API classes.
+        """
         # List of ThermalBase-derived objects representing all thermals
         # available on the SFP
         self._thermal_list = []
         self._bank = bank
-        self._xcvr_api_factory = XcvrApiFactory(self.read_eeprom, self.write_eeprom)
+        self._xcvr_api_factory = XcvrApiFactory(
+            self.read_eeprom, self.write_eeprom,
+            config=xcvr_api_config
+        )
         self._xcvr_api = None
 
     @property
