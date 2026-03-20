@@ -5,6 +5,10 @@
     implementation for a xcvr module in SONiC
 """
 import re
+
+from dataclasses import dataclass
+from typing import Type
+
 from .xcvr_eeprom import XcvrEeprom
 # TODO: remove the following imports
 from .codes.public.cmis import CmisCodes
@@ -12,6 +16,7 @@ from .api.public.cmis import CmisApi
 from .api.public.c_cmis import CCmisApi
 from .mem_maps.public.cmis import CmisMemMap
 from .mem_maps.public.c_cmis import CCmisMemMap
+from .mem_maps.public.elsfp import ElsfpMemMap
 
 from .codes.credo.aec_800g import CredoAec800gCodes
 from .api.credo.aec_800g import CredoAec800gApi
@@ -48,8 +53,31 @@ INL_800G_VENDOR_PN_LIST = ["T-DL8CNT-NCI", "T-DH8CNT-NCI", "T-DH8CNT-N00", "T-DP
 EOP_800G_VENDOR_PN_LIST = ["EOLD-168HG-02-41", "EOLD-138HG-02-41"]
 HISENSE_2X100G_VENDOR_PN = r"DEF8504-2C\d{2}-MB3$"
 
+BANKED_MEM_MAPS = [CmisMemMap, CCmisMemMap, ElsfpMemMap]
+
+@dataclass
+class XcvrApiConfig:
+    """
+    Configuration for creating a specific XcvrApi, bypassing auto-detection.
+
+    Attributes:
+        codes_cls: The codes class to use (e.g., CmisCodes, Sff8636Codes)
+        mem_map_cls: The memory map class to use (e.g., CmisMemMap, Sff8636MemMap)
+        api_cls: The API class to use (e.g., CmisApi, Sff8636Api)
+    """
+    codes_cls: Type
+    mem_map_cls: Type
+    api_cls: Type
+
 class XcvrApiFactory(object):
     def __init__(self, reader, writer):
+        """
+        Initialize the XcvrApiFactory.
+
+        Args:
+            reader: Function to read from EEPROM (offset, num_bytes) -> bytearray
+            writer: Function to write to EEPROM (offset, num_bytes, buffer) -> bool
+        """
         self.reader = reader
         self.writer = writer
 
@@ -112,13 +140,20 @@ class XcvrApiFactory(object):
         else:
             return self._create_api(Sff8436Codes, Sff8436MemMap, Sff8436Api)
 
-    def _create_api(self, codes_class, mem_map_class, api_class):
+    def _create_api(self, codes_class, mem_map_class, api_class, bank=0):
         codes = codes_class
-        mem_map = mem_map_class(codes)
+        if any(issubclass(mem_map_class, m) for m in BANKED_MEM_MAPS):
+            mem_map = mem_map_class(codes, bank=bank)
+        else:
+            mem_map = mem_map_class(codes)
         xcvr_eeprom = XcvrEeprom(self.reader, self.writer, mem_map)
         return api_class(xcvr_eeprom)
 
-    def create_xcvr_api(self, bank=0):
+    def create_xcvr_api(self, bank=0, config: XcvrApiConfig | None = None):
+        # If config is provided, bypass auto-detection
+        if config:
+            return self._create_api(config.codes_cls, config.mem_map_cls, config.api_cls, bank)
+
         id = self._get_id()
 
         # Instantiate various Optics implementation based upon their respective ID as per SFF8024
