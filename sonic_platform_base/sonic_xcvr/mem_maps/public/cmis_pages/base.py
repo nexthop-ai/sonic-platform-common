@@ -37,7 +37,7 @@ class CmisPage(XcvrMemMap):
 
     def getaddr(self, offset, page_size=128):
         """
-        Calculate linear offset for optoe driver using instance's bank.
+        Calculate linear offset for CMIS memory map using instance's bank.
 
         For bank 0: linear_offset = page * 128 + byte_offset
         For bank > 0 (pages 10h-FFh only):
