@@ -68,6 +68,15 @@ class CmisFlatMemMap(XcvrMemMap):
             *get_field_from_pages(consts.TRANS_CONFIG_FIELD, self.administrative_lower_page)
         )
 
+        self.EXTENDED_MODULE_INFO = RegGroupField(consts.EXTENDED_MODULE_INFO_FIELD,
+            *get_field_from_pages(consts.EXTENDED_MODULE_INFO_FIELD, self.administrative_lower_page)
+        )
+
+    @property
+    def bank(self):
+        """Returns the bank number (read-only)."""
+        return self._bank
+
     def getaddr(self, page, offset, page_size=128):
         """
         Calculate linear offset for CMIS memory map using instance's bank.
