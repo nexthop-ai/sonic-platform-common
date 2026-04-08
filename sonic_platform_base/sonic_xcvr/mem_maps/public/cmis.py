@@ -146,6 +146,10 @@ class CmisFlatMemMap(XcvrMemMap):
             NumberRegField(consts.MODULE_LEVEL_CONTROL, self.getaddr(0x0, 26), size=1, ro=False),
         )
 
+        self.EXTENDED_MODULE_INFO = RegGroupField(consts.EXTENDED_MODULE_INFO_FIELD,
+            *get_field_from_pages(consts.EXTENDED_MODULE_INFO_FIELD, self.administrative_lower_page)
+        )
+
     @property
     def bank(self):
         """Returns the bank number (read-only)."""
