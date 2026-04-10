@@ -16,6 +16,8 @@ from .cmis_page_consts import (
     LANE_DATAPATH_STATUS_PAGE,
     TUNABLE_LASER_CTRL_STATUS_PAGE,
     MODULE_PERF_DIAG_CTRL_PAGE,
+    ELSFP_ADVERTISEMENTS_FLAGS_CTRL_PAGE,
+    ELSFP_SETPOINTS_MON_PAGE,
     VDM_ADVERTISING_CTRL_PAGE,
     CDB_MESSAGE_PAGE,
 )
@@ -27,6 +29,8 @@ from .pg_10_lane_datapath_config import CmisLaneDatapathConfigPage
 from .pg_11_lane_datapath_status import CmisLaneDatapathStatusPage
 from .pg_12_tunable_laser_ctrl_status import CmisTunableLaserCtrlStatusPage
 from .pg_13_module_perf_diag_ctrl import CmisModulePerfDiagCtrlPage
+from .pg_1a_elsfp_advert_flags_ctrl import ElsfpAdvertisementsFlagsCtrlPage
+from .pg_1b_elsfp_setpoints_mon import ElsfpSetpointsMonitorsPage
 from .pg_2f_vdm_advertising_ctrl import CmisVdmAdvertisingCtrlPage
 from .pg_9f_cdb_message import CmisCdbMessagePage
 
@@ -42,6 +46,8 @@ __all__ = [
     'LANE_DATAPATH_STATUS_PAGE',
     'TUNABLE_LASER_CTRL_STATUS_PAGE',
     'MODULE_PERF_DIAG_CTRL_PAGE',
+    'ELSFP_ADVERTISEMENTS_FLAGS_CTRL_PAGE',
+    'ELSFP_SETPOINTS_MON_PAGE',
     'VDM_ADVERTISING_CTRL_PAGE',
     'CDB_MESSAGE_PAGE',
     'CmisAdministrativeLowerPage',
@@ -52,6 +58,8 @@ __all__ = [
     'CmisLaneDatapathStatusPage',
     'CmisTunableLaserCtrlStatusPage',
     'CmisModulePerfDiagCtrlPage',
+    'ElsfpAdvertisementsFlagsCtrlPage',
+    'ElsfpSetpointsMonitorsPage',
     'CmisVdmAdvertisingCtrlPage',
     'CmisCdbMessagePage',
 ]
