@@ -35,8 +35,6 @@ class ModuleBase(device_base.DeviceBase):
     MODULE_TYPE_LINE    = "LINE-CARD"
     MODULE_TYPE_FABRIC  = "FABRIC-CARD"
     MODULE_TYPE_DPU  = "DPU"
-    MODULE_TYPE_SWITCH_HOST = "SWITCH_HOST"
-
     # Module Type for Switch on a device having BMC(which controls switch power state)
     MODULE_TYPE_SWITCH_HOST = "SWITCH-HOST"
 
@@ -175,7 +173,7 @@ class ModuleBase(device_base.DeviceBase):
     def get_name(self):
         """
         Retrieves the name of the module prefixed by SUPERVISOR, LINE-CARD,
-        FABRIC-CARD, DPU, or SWITCH_HOST
+        FABRIC-CARD, DPU, or SWITCH-HOST
 
         It can return name 'SWITCH-HOST' for module type MODULE_TYPE_SWITCH_HOST
 
