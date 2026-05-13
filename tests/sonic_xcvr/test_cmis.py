@@ -5,11 +5,90 @@ import traceback
 import random
 from sonic_platform_base.sonic_xcvr.api.public.cmis import CmisApi, CMIS_VDM_KEY_TO_DB_PREFIX_KEY_MAP, THRESHOLD_TYPE_STR_MAP
 from sonic_platform_base.sonic_xcvr.api.public.cmis import FLAG_TYPE_STR_MAP, CMIS_XCVR_INFO_DEFAULT_DICT
-from sonic_platform_base.sonic_xcvr.mem_maps.public.cmis import CmisMemMap
+from sonic_platform_base.sonic_xcvr.mem_maps.public.cmis import (
+    CmisMemMap,
+    CMIS_ARCH_PAGES,
+    CMIS_EEPROM_PAGE_SIZE,
+)
 from sonic_platform_base.sonic_xcvr.xcvr_eeprom import XcvrEeprom
 from sonic_platform_base.sonic_xcvr.codes.public.cmis import CmisCodes
 from sonic_platform_base.sonic_xcvr.codes.public.sff8024 import Sff8024
 from sonic_platform_base.sonic_xcvr.fields import consts
+
+# Bytes per bank in the optoe linear EEPROM file (32 KiB).
+BYTES_PER_BANK = CMIS_ARCH_PAGES * CMIS_EEPROM_PAGE_SIZE
+
+
+class TestCmisMemMap:
+    """
+    Unit tests for CmisMemMap.
+    """
+
+    codes = CmisCodes
+
+    # The getaddr() tests encode the optoe driver's linear addressing
+    # contract from sonic-linux-kernel PR #473: each bank is a 256-page
+    # (32 KiB) block in the EEPROM file, and the lower 128 bytes of page
+    # 00h are not shifted.
+
+    @pytest.mark.parametrize("bank", [0, 1, 2, 3])
+    @pytest.mark.parametrize("offset", [0, 1, 64, 127])
+    def test_getaddr_lower_memory_invariant_across_banks(self, bank, offset):
+        """Lower memory (page 0, offset < 128) maps to the same linear
+        offset for every bank."""
+        mem_map = CmisMemMap(self.codes, bank=bank)
+        assert mem_map.getaddr(0, offset) == offset
+
+    @pytest.mark.parametrize("page,offset", [
+        (0x00, 128),    # Upper page 00h, first byte
+        (0x00, 255),    # Upper page 00h, last byte
+        (0x01, 0),      # Page 01h start
+        (0x01, 200),    # Page 01h, advertising region
+        (0x10, 128),    # First banked page per CMIS spec
+        (0x11, 154),    # TX power monitor region
+        (0x9F, 134),    # CDB reply length
+    ])
+    def test_getaddr_bank_zero_matches_legacy_linear_offset(self, page, offset):
+        """With bank=0, getaddr() must collapse to the pre-banking
+        formula (page * 128 + offset). Guards against silent regression
+        for existing single-bank consumers."""
+        mem_map = CmisMemMap(self.codes, bank=0)
+        assert mem_map.getaddr(page, offset) == page * CMIS_EEPROM_PAGE_SIZE + offset
+
+    @pytest.mark.parametrize("bank", [1, 2, 3])
+    @pytest.mark.parametrize("page,offset", [
+        (0x00, 128),    # Upper page 00h shifts too, per kernel-driver contract
+        (0x01, 0),
+        (0x10, 128),
+        (0x11, 200),
+        (0x12, 222),
+        (0x9F, 134),
+    ])
+    def test_getaddr_paged_region_shifts_by_32kb_per_bank(self, bank, page, offset):
+        """Every non-lower address shifts by exactly bank * 32 KiB versus
+        bank 0. This is the load-bearing invariant against the optoe
+        linear file layout."""
+        bank0 = CmisMemMap(self.codes, bank=0).getaddr(page, offset)
+        bankn = CmisMemMap(self.codes, bank=bank).getaddr(page, offset)
+        assert bankn - bank0 == bank * BYTES_PER_BANK
+
+    @pytest.mark.parametrize("bank,page,offset,expected", [
+        # expected = (bank * 256 + page) * 128 + offset
+        (0, 0x00, 128, 128),
+        (0, 0x01, 0,   128),
+        (0, 0x10, 128, 0x10 * 128 + 128),                    # 2176
+        (1, 0x00, 128, BYTES_PER_BANK + 128),                # 32896
+        (1, 0x10, 128, BYTES_PER_BANK + 0x10 * 128 + 128),   # 34944
+        (2, 0x9F, 0,   2 * BYTES_PER_BANK + 0x9F * 128),     # 85888
+        (3, 0xFF, 255, (3 * 256 + 0xFF) * 128 + 255),        # 131199
+    ])
+    def test_getaddr_specific_worked_examples(self, bank, page, offset, expected):
+        """Concrete numeric checks so a future reader can verify the
+        formula without redoing the arithmetic. Also catches off-by-one
+        drift in the formula itself."""
+        mem_map = CmisMemMap(self.codes, bank=bank)
+        assert mem_map.getaddr(page, offset) == expected
+
 
 class TestCmis(object):
     codes = CmisCodes
