@@ -11,6 +11,12 @@ SFP_OPTOE_PAGE_SELECT_OFFSET = 127
 SFP_OPTOE_UPPER_PAGE0_OFFSET = 128
 SFP_OPTOE_PAGE_SIZE = 128
 
+CMIS_MODULE_IDS = (0x18, 0x19, 0x1b, 0x1e)
+# Page 01h byte 142 in the optoe linear EEPROM file at bank-0 stride; see sonic-linux-kernel PR #473.
+CMIS_BANKS_SUPPORTED_FILE_OFFSET = 270
+# CMIS AdvBnkSupport (page 01h byte 142, bits 0-1): 00b->1, 01b->2, 10b->4 banks.
+CMIS_BANKS_SUPPORTED_TO_MAX_BANK_SIZE = {0: 1, 1: 2, 2: 4}
+
 class SfpOptoeBase(SfpBase):
     def __init__(self, bank=0):
         SfpBase.__init__(self, bank=bank)
@@ -302,6 +308,32 @@ class SfpOptoeBase(SfpBase):
                 f.write(str(write_max))
         except (OSError, IOError):
             pass
+
+    def set_optoe_max_bank_size(self, max_bank_size):
+        """Write max_bank_size to the optoe driver's sysfs entry; required before banked EEPROM offsets are accessible (sonic-linux-kernel PR #473)."""
+        try:
+            sys_path = self.get_eeprom_path().replace("eeprom", "max_bank_size")
+            with open(sys_path, mode='w') as f:
+                f.write(str(max_bank_size))
+        except (OSError, IOError):
+            pass
+
+    def _read_optoe_max_bank_size(self):
+        """Determine optoe max_bank_size from the module's CMIS BanksSupported advertisement, or None if non-CMIS or unreadable."""
+        id_byte = self.read_eeprom(0, 1)
+        if id_byte is None or id_byte[0] not in CMIS_MODULE_IDS:
+            return None
+        raw = self.read_eeprom(CMIS_BANKS_SUPPORTED_FILE_OFFSET, 1)
+        if raw is None:
+            return None
+        return CMIS_BANKS_SUPPORTED_TO_MAX_BANK_SIZE.get(raw[0] & 0x03)
+
+    def refresh_xcvr_api(self):
+        """Sync optoe max_bank_size to the module's BanksSupported before building the XcvrApi, so subsequent banked reads don't land past EOF."""
+        max_bank_size = self._read_optoe_max_bank_size()
+        if max_bank_size is not None:
+            self.set_optoe_max_bank_size(max_bank_size)
+        super().refresh_xcvr_api()
 
     def get_optoe_current_page(self):
         return self.read_eeprom(SFP_OPTOE_PAGE_SELECT_OFFSET, 1)[0]

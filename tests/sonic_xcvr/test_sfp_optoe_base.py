@@ -195,6 +195,35 @@ class TestSfpOptoeBase(object):
 
         mock_open.assert_called()
 
+    @pytest.mark.parametrize("id_byte, banks_byte, expected", [
+        # Non-CMIS IDs short-circuit before reading the banks byte
+        (0x03, None, None),       # SFP
+        (0x0D, None, None),       # QSFP+
+        (0x11, None, None),       # QSFP28
+        # All four CMIS IDs reach the banks-byte read
+        (0x18, 0x00, 1),          # QSFP-DD, 1 bank
+        (0x19, 0x01, 2),          # OSFP, 2 banks
+        (0x1b, 0x02, 4),          # DSFP, 4 banks
+        (0x1e, 0x01, 2),          # QSFP+ CMIS, 2 banks
+        # Reserved encoding 0b11 maps to None
+        (0x18, 0x03, None),
+        # Bits 2-7 in byte 142 are ignored by the &0x03 mask
+        (0x18, 0x62, 4),          # VDM/Diag bits set + 0b10 in low bits
+        (0x18, 0xFB, None),       # high bits set + 0b11 reserved in low bits
+        # Read failures propagate as None
+        (None, None, None),       # ID byte read fails
+        (0x18, None, None),       # banks byte read fails
+    ])
+    def test_read_optoe_max_bank_size(self, id_byte, banks_byte, expected):
+        def fake_read(offset, num_bytes):
+            if offset == 0:
+                return bytearray([id_byte]) if id_byte is not None else None
+            if offset == 270:
+                return bytearray([banks_byte]) if banks_byte is not None else None
+            return None
+        with patch.object(SfpOptoeBase, 'read_eeprom', side_effect=fake_read):
+            assert self.sfp_optoe_api._read_optoe_max_bank_size() == expected
+
     def test_set_power(self):
         mode = 1
         with pytest.raises(NotImplementedError):
