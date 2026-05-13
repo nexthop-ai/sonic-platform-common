@@ -30,6 +30,11 @@ class ChassisBase(device_base.DeviceBase):
     REBOOT_CAUSE_HARDWARE_RESET_FROM_ASIC = "Reset from ASIC"
     REBOOT_CAUSE_NON_HARDWARE = "Non-Hardware"
 
+    # Possible chassis cooling types -- returned by get_cooling_type().
+    COOLING_TYPE_LIQUID = "liquid"
+    COOLING_TYPE_AIR = "air"
+    COOLING_TYPE_UNKNOWN = "unknown"
+
     def __init__(self):
         # List of ComponentBase-derived objects representing all components
         # available on the chassis
@@ -167,6 +172,21 @@ class ChassisBase(device_base.DeviceBase):
             running SONiC should return True
         """
         return False
+
+    def get_cooling_type(self):
+        """
+        Identify whether this chassis is liquid- or air-cooled.
+
+        Vendor implementations should override this. The default returns
+        COOLING_TYPE_UNKNOWN so platforms without a signal don't silently
+        misreport -- callers should treat UNKNOWN as "not liquid"
+        (fail-closed) for any feature that's intended only on liquid SKUs.
+
+        Returns:
+            str: One of COOLING_TYPE_LIQUID, COOLING_TYPE_AIR,
+                 COOLING_TYPE_UNKNOWN.
+        """
+        return self.COOLING_TYPE_UNKNOWN
 
     def init_midplane_switch(self):
         """
