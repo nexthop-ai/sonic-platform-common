@@ -12,7 +12,10 @@ SFP_OPTOE_UPPER_PAGE0_OFFSET = 128
 SFP_OPTOE_PAGE_SIZE = 128
 
 CMIS_MODULE_IDS = (0x18, 0x19, 0x1b, 0x1e)
-# Page 01h byte 142 in the optoe linear EEPROM file at bank-0 stride; see sonic-linux-kernel PR #473.
+# Lower-memory byte 2 bit 7: 1 = flat memory (lower + upper page 00h only), 0 = paged.
+CMIS_FLAT_MEM_FILE_OFFSET = 2
+CMIS_FLAT_MEM_BIT_MASK = 0x80
+# Page 01h byte 142 in the optoe linear EEPROM file at bank-0 stride.
 CMIS_BANKS_SUPPORTED_FILE_OFFSET = 270
 # CMIS AdvBnkSupport (page 01h byte 142, bits 0-1): 00b->1, 01b->2, 10b->4 banks.
 CMIS_BANKS_SUPPORTED_TO_MAX_BANK_SIZE = {0: 0, 1: 2, 2: 4}
@@ -310,7 +313,7 @@ class SfpOptoeBase(SfpBase):
             pass
 
     def set_optoe_max_bank_size(self, max_bank_size):
-        """Write max_bank_size to the optoe driver's sysfs entry; required before banked EEPROM offsets are accessible (sonic-linux-kernel PR #473)."""
+        """Write max_bank_size to the optoe driver's sysfs entry; required before banked EEPROM offsets are accessible"""
         try:
             sys_path = self.get_eeprom_path().replace("eeprom", "max_bank_size")
             with open(sys_path, mode='w') as f:
@@ -319,9 +322,12 @@ class SfpOptoeBase(SfpBase):
             pass
 
     def _read_optoe_max_bank_size(self):
-        """Determine optoe max_bank_size from the module's CMIS BanksSupported advertisement, or None if non-CMIS or unreadable."""
+        """Determine optoe max_bank_size from the module's CMIS BanksSupported advertisement, or None if non-CMIS, flat-memory, or unreadable."""
         id_byte = self.read_eeprom(0, 1)
         if id_byte is None or id_byte[0] not in CMIS_MODULE_IDS:
+            return None
+        flat_mem = self.read_eeprom(CMIS_FLAT_MEM_FILE_OFFSET, 1)
+        if flat_mem is None or flat_mem[0] & CMIS_FLAT_MEM_BIT_MASK:
             return None
         raw = self.read_eeprom(CMIS_BANKS_SUPPORTED_FILE_OFFSET, 1)
         if raw is None:

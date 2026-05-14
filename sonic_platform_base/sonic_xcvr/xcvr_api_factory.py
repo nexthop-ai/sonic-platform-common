@@ -112,12 +112,9 @@ class XcvrApiFactory(object):
         else:
             return self._create_api(Sff8436Codes, Sff8436MemMap, Sff8436Api)
 
-    def _create_api(self, codes_class, mem_map_class, api_class, bank=None):
+    def _create_api(self, codes_class, mem_map_class, api_class):
         codes = codes_class
-        if bank is not None:
-            mem_map = mem_map_class(codes, bank=bank)
-        else:
-            mem_map = mem_map_class(codes)
+        mem_map = mem_map_class(codes)
         xcvr_eeprom = XcvrEeprom(self.reader, self.writer, mem_map)
         return api_class(xcvr_eeprom)
 

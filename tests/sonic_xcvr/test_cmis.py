@@ -28,9 +28,8 @@ class TestCmisMemMap:
     codes = CmisCodes
 
     # The getaddr() tests encode the optoe driver's linear addressing
-    # contract from sonic-linux-kernel PR #473: each bank is a 256-page
-    # (32 KiB) block in the EEPROM file, and the lower 128 bytes of page
-    # 00h are not shifted.
+    # contract: each bank is a 256-page (32 KiB) block in the EEPROM
+    # file, and the lower 128 bytes of page 00h are not shifted.
 
     @pytest.mark.parametrize("bank", [0, 1, 2, 3])
     @pytest.mark.parametrize("offset", [0, 1, 64, 127])

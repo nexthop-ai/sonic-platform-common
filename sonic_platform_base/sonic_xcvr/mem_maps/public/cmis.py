@@ -22,7 +22,6 @@ from ...fields.public.cmis import CableLenField
 # Constants matching optoe driver
 CMIS_EEPROM_PAGE_SIZE = 128
 CMIS_NUM_NON_BANKED_PAGES = 16   # pages 00h-0Fh
-CMIS_NUM_BANKED_PAGES = 240      # pages 10h-FFh
 CMIS_ARCH_PAGES = 256            # architectural pages per bank (matches OPTOE_ARCH_PAGES)
 
 class CmisFlatMemMap(XcvrMemMap):
@@ -177,13 +176,16 @@ class CmisFlatMemMap(XcvrMemMap):
             # Lower memory - not affected by banking or paging.
             return offset
 
-        # For all paged memory (including bank 0), use the unified formula
-        # that treats each bank as a 256-page (32KB) block
         # If we are accessing a non-banked page, there is no reason to set the bank
-        # to a non-zero value. Note: we consider CDB pages as non-banked here, though it
+        # to a non-zero value. 
+        bank = 0 if page < CMIS_NUM_NON_BANKED_PAGES else self.bank
+        # Note: we consider CDB pages as non-banked here, though it
         # is possible to have multiple CDB instances exposed for a module where
         # each instance is accessible via bank selection.
-        bank = 0 if (page < 0x10 or 0x9F <= page <= 0xAF) else self.bank
+        # This can be deleted once support for multiple CDB instances is added.
+        bank = 0 if 0x9F <= page <= 0xAF else self.bank
+        # For all paged memory (including bank 0), use the unified formula
+        # that treats each bank as a 256-page (32KB) block
         return (bank * CMIS_ARCH_PAGES + page) * page_size + offset
 
 class CmisMemMap(CmisFlatMemMap):
