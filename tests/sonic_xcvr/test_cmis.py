@@ -57,35 +57,60 @@ class TestCmisMemMap:
 
     @pytest.mark.parametrize("bank", [1, 2, 3])
     @pytest.mark.parametrize("page,offset", [
-        (0x00, 128),    # Upper page 00h shifts too, per kernel-driver contract
-        (0x01, 0),
-        (0x10, 128),
-        (0x11, 200),
-        (0x12, 222),
-        (0x9F, 134),
+        (0x10, 128),    # First banked page per CMIS spec
+        (0x11, 200),    # TX power monitor region
+        (0x12, 222),    # Laser tuning page
+        (0x60, 150),    # Mid banked range
+        (0x9E, 200),    # Last banked page before CDB region
+        (0xB0, 128),    # First banked page after CDB region
+        (0xFF, 255),    # Last banked page
     ])
-    def test_getaddr_paged_region_shifts_by_32kb_per_bank(self, bank, page, offset):
-        """Every non-lower address shifts by exactly bank * 32 KiB versus
-        bank 0. This is the load-bearing invariant against the optoe
-        linear file layout."""
+    def test_getaddr_banked_pages_shift_by_32kb_per_bank(self, bank, page, offset):
+        """Banked pages (10h-9Eh and B0h-FFh) shift by exactly bank * 32 KiB
+        versus bank 0. This is the formula's load-bearing invariant."""
         bank0 = CmisMemMap(self.codes, bank=0).getaddr(page, offset)
         bankn = CmisMemMap(self.codes, bank=bank).getaddr(page, offset)
         assert bankn - bank0 == bank * BYTES_PER_BANK
 
+    @pytest.mark.parametrize("bank", [1, 2, 3])
+    @pytest.mark.parametrize("page,offset", [
+        # Pages 00h-0Fh: non-banked per CMIS 5.x
+        (0x00, 128),    # Upper page 00h, first byte
+        (0x00, 255),    # Upper page 00h, last byte
+        (0x01, 142),    # BanksSupported field byte
+        (0x05, 200),    # Mid non-banked range
+        (0x0F, 255),    # Last spec-defined non-banked page
+        # Pages 9Fh-AFh: CDB region, also treated as non-banked here
+        (0x9F, 128),    # First CDB page
+        (0xA5, 200),    # Mid CDB range
+        (0xAF, 255),    # Last CDB page
+    ])
+    def test_getaddr_non_banked_pages_share_offset_across_banks(self, bank, page, offset):
+        """Pages 00h-0Fh and CDB pages 9Fh-AFh produce the same linear offset
+        regardless of self.bank: getaddr() clamps bank to 0 because there is
+        no reason to write the BankSelect register for these pages."""
+        bank0 = CmisMemMap(self.codes, bank=0).getaddr(page, offset)
+        bankn = CmisMemMap(self.codes, bank=bank).getaddr(page, offset)
+        assert bankn == bank0
+
     @pytest.mark.parametrize("bank,page,offset,expected", [
-        # expected = (bank * 256 + page) * 128 + offset
+        # bank=0 baseline: formula collapses to page * 128 + offset
         (0, 0x00, 128, 128),
         (0, 0x01, 0,   128),
         (0, 0x10, 128, 0x10 * 128 + 128),                    # 2176
-        (1, 0x00, 128, BYTES_PER_BANK + 128),                # 32896
+        # Banked page (>= 0x10, not in CDB range) shifts by bank * 32KiB
         (1, 0x10, 128, BYTES_PER_BANK + 0x10 * 128 + 128),   # 34944
-        (2, 0x9F, 0,   2 * BYTES_PER_BANK + 0x9F * 128),     # 85888
         (3, 0xFF, 255, (3 * 256 + 0xFF) * 128 + 255),        # 131199
+        # Non-banked page (< 0x10) clamps to bank 0 regardless of self.bank
+        (1, 0x00, 128, 128),
+        (2, 0x05, 200, 0x05 * 128 + 200),                    # 840
+        # CDB pages 9Fh-AFh also clamp to bank 0
+        (2, 0x9F, 0,   0x9F * 128),                          # 20352
+        (3, 0xAF, 255, 0xAF * 128 + 255),                    # 22655
     ])
     def test_getaddr_specific_worked_examples(self, bank, page, offset, expected):
-        """Concrete numeric checks so a future reader can verify the
-        formula without redoing the arithmetic. Also catches off-by-one
-        drift in the formula itself."""
+        """Concrete numeric checks for both branches of the clamp, so a
+        future reader can verify the formula without redoing the arithmetic."""
         mem_map = CmisMemMap(self.codes, bank=bank)
         assert mem_map.getaddr(page, offset) == expected
 
