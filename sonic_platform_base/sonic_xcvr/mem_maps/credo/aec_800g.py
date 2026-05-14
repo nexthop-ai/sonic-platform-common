@@ -12,8 +12,8 @@ from ...fields.xcvr_field import (
 from ...fields import consts
 
 class CmisAec800gMemMap(CmisTargetFWUpgradeMemMap):
-    def __init__(self, codes):
-        super().__init__(codes)
+    def __init__(self, codes, bank=0):
+        super().__init__(codes, bank=bank)
 
         self.VENDOR_CUSTOM = RegGroupField(consts.VENDOR_CUSTOM,
             NumberRegField(consts.TARGET_MODE, self.getaddr(0x0, 64), ro=False)

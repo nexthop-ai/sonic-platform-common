@@ -81,10 +81,10 @@ class XcvrApiFactory(object):
         vendor_pn = self._get_vendor_part_num()
 
         if vendor_name == 'Credo' and vendor_pn in CREDO_800G_AEC_VENDOR_PN_LIST:
-            api = self._create_api(CmisAec800gCodes, CmisAec800gMemMap, CmisAec800gApi)
+            api = self._create_api(CmisAec800gCodes, CmisAec800gMemMap, CmisAec800gApi, bank=bank)
         elif ('INNOLIGHT' in vendor_name and vendor_pn in INL_800G_VENDOR_PN_LIST) or \
              ('EOPTOLINK' in vendor_name and vendor_pn in EOP_800G_VENDOR_PN_LIST):
-            api = self._create_api(CmisCodes, CmisMemMap, CmisFr800gApi)
+            api = self._create_api(CmisCodes, CmisMemMap, CmisFr800gApi, bank=bank)
         else:
             xcvr_eeprom = XcvrEeprom(self.reader, self.writer, CmisMemMap(CmisCodes, bank=bank))
             api = CmisApi(xcvr_eeprom, init_cdb_fw_handler=True)
@@ -103,9 +103,12 @@ class XcvrApiFactory(object):
         else:
             return self._create_api(Sff8436Codes, Sff8436MemMap, Sff8436Api)
 
-    def _create_api(self, codes_class, mem_map_class, api_class):
+    def _create_api(self, codes_class, mem_map_class, api_class, bank=None):
         codes = codes_class
-        mem_map = mem_map_class(codes)
+        if bank is not None:
+            mem_map = mem_map_class(codes, bank=bank)
+        else:
+            mem_map = mem_map_class(codes)
         xcvr_eeprom = XcvrEeprom(self.reader, self.writer, mem_map)
         return api_class(xcvr_eeprom)
 
