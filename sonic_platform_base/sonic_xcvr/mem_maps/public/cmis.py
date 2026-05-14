@@ -183,7 +183,7 @@ class CmisFlatMemMap(XcvrMemMap):
         # is possible to have multiple CDB instances exposed for a module where
         # each instance is accessible via bank selection.
         # This can be deleted once support for multiple CDB instances is added.
-        bank = 0 if 0x9F <= page <= 0xAF else self.bank
+        bank = 0 if 0x9F <= page <= 0xAF else bank
         # For all paged memory (including bank 0), use the unified formula
         # that treats each bank as a 256-page (32KB) block
         return (bank * CMIS_ARCH_PAGES + page) * page_size + offset
