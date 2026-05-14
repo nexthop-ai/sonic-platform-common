@@ -329,10 +329,11 @@ class SfpOptoeBase(SfpBase):
         return CMIS_BANKS_SUPPORTED_TO_MAX_BANK_SIZE.get(raw[0] & 0x03)
 
     def refresh_xcvr_api(self):
-        """Sync optoe max_bank_size to the module's BanksSupported before building the XcvrApi, so subsequent banked reads don't land past EOF."""
-        max_bank_size = self._read_optoe_max_bank_size()
-        if max_bank_size is not None:
-            self.set_optoe_max_bank_size(max_bank_size)
+        """Sync optoe max_bank_size to the module's BanksSupported before building the XcvrApi, so subsequent banked reads don't land past EOF. Only runs when self.bank is non-zero so we don't enable banking based on a module that may erroneously advertise it."""
+        if self.bank != 0:
+            max_bank_size = self._read_optoe_max_bank_size()
+            if max_bank_size is not None:
+                self.set_optoe_max_bank_size(max_bank_size)
         super().refresh_xcvr_api()
 
     def get_optoe_current_page(self):
