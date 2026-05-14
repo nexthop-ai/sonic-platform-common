@@ -51,6 +51,10 @@ class ChassisBase(device_base.DeviceBase):
         # available on the chassis
         self._psu_list = []
 
+        # List of PdbBase-derived objects representing all power distribution boards
+        # available on the chassis
+        self._pdb_list = []
+
         # List of ThermalBase-derived objects representing all thermals
         # available on the chassis
         self._thermal_list = []
@@ -73,6 +77,8 @@ class ChassisBase(device_base.DeviceBase):
         # BMC
         self._bmc = None
 
+        # SED (Self-Encrypting Drive) password management
+        self._sed_mgmt = None
 
     def get_base_mac(self):
         """
@@ -155,6 +161,16 @@ class ChassisBase(device_base.DeviceBase):
             Should return True for supervisor-cards, line-cards etc running as part
             of modular-chassis.
             For SmartSwitch this should return False.
+        """
+        return False
+
+    def is_bmc(self):
+        """
+        Retrieves whether the sonic instance is a BMC
+
+        Returns:
+            A bool value, should return False by default. BMC card instances
+            running SONiC should return True
         """
         return False
 
@@ -247,6 +263,9 @@ class ChassisBase(device_base.DeviceBase):
         Retrieves module represented by (0-based) index <index>
         On a SmartSwitch index:0 will fetch DPU0 and so on
 
+        In case of a Switch modelled as a chassis with BMC card,
+        On BMC : index 0 will fetch SWITCH-HOST
+
         Args:
             index: An integer, the index (0-based) of the module to
             retrieve
@@ -273,6 +292,7 @@ class ChassisBase(device_base.DeviceBase):
             module_name: A string, prefixed by SUPERVISOR, LINE-CARD or FABRIC-CARD
             Ex. SUPERVISOR0, LINE-CARD1, FABRIC-CARD5
             SmartSwitch Example: DPU0, DPU1, DPU2 ... DPUX
+            In case of a Switch modelled as a chassis with BMC card: SWITCH-HOST
 
         Returns:
             An integer, the index of the ModuleBase object in the module_list
@@ -468,6 +488,52 @@ class ChassisBase(device_base.DeviceBase):
                              index, len(self._psu_list)-1))
 
         return psu
+
+    ##############################################
+    # PDB methods
+    ##############################################
+
+    def get_num_pdbs(self):
+        """
+        Retrieves the number of power distribution boards available on this chassis
+
+        Returns:
+            An integer, the number of power distribution boards available on this
+            chassis
+        """
+        return len(self._pdb_list)
+
+    def get_all_pdbs(self):
+        """
+        Retrieves all power distribution boards available on this chassis
+
+        Returns:
+            A list of objects derived from PdbBase representing all power
+            distribution boards available on this chassis
+        """
+        return self._pdb_list
+
+    def get_pdb(self, index):
+        """
+        Retrieves power distribution board object represented by (0-based) index <index>
+
+        Args:
+            index: An integer, the index (0-based) of the power distribution board object to
+            retrieve
+
+        Returns:
+            An object dervied from PdbBase representing the specified power
+            distribution board object
+        """
+        pdb = None
+
+        try:
+            pdb = self._pdb_list[index]
+        except IndexError:
+            sys.stderr.write("PDB index {} out of range (0-{})\n".format(
+                             index, len(self._pdb_list)-1))
+
+        return pdb
 
     ##############################################
     # THERMAL methods
@@ -799,3 +865,11 @@ class ChassisBase(device_base.DeviceBase):
         """
         return self._bmc
 
+    def get_sed_mgmt(self):
+        """
+        Get SED (Self-Encrypting Drive) password management object for the platform.
+
+        Returns:
+            An object derived from SedMgmtBase, or None if SED management is not supported.
+        """
+        return self._sed_mgmt

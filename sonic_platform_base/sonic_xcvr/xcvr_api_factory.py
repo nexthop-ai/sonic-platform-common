@@ -4,7 +4,7 @@
     Factory class responsible for instantiating the appropriate XcvrApi
     implementation for a xcvr module in SONiC
 """
-
+import re
 from .xcvr_eeprom import XcvrEeprom
 # TODO: remove the following imports
 from .codes.public.cmis import CmisCodes
@@ -13,11 +13,12 @@ from .api.public.c_cmis import CCmisApi
 from .mem_maps.public.cmis import CmisMemMap
 from .mem_maps.public.c_cmis import CCmisMemMap
 
-from .codes.credo.aec_800g import CmisAec800gCodes
-from .api.credo.aec_800g import CmisAec800gApi
-from .mem_maps.credo.aec_800g import CmisAec800gMemMap
+from .codes.credo.aec_800g import CredoAec800gCodes
+from .api.credo.aec_800g import CredoAec800gApi
+from .mem_maps.credo.aec_800g import CredoAec800gMemMap
 
 from .api.innolight.fr_800g import CmisFr800gApi
+from .api.hisense.aoc_2x100g import CmisAocSingleBankApi
 
 from .api.amphenol.backplane import AmphBackplaneImpl
 from .mem_maps.amphenol.backplane import AmphBackplaneMemMap
@@ -41,8 +42,11 @@ VENDOR_NAME_LENGTH = 16
 VENDOR_PART_NUM_LENGTH = 16
 
 CREDO_800G_AEC_VENDOR_PN_LIST = ["CAC81X321M2MC1MS", "CAC815321M2MC1MS", "CAC82X321M2MC1MS"]
-INL_800G_VENDOR_PN_LIST = ["T-DL8CNT-NCI", "T-DH8CNT-NCI", "T-DH8CNT-N00", "T-DP4CNH-NCI", "T-DP8CNT-NNO", "T-DP8CNH-NNO", "T-DC8CNT-NNO", "T-DP8CNL-NNO", "T-OL8CNT-N00", "T-OH8CNH-N00"]
+INL_800G_VENDOR_PN_LIST = ["T-DL8CNT-NCI", "T-DH8CNT-NCI", "T-DH8CNT-N00", "T-DP4CNH-NCI", "T-DP8CNT-NNO",
+                           "T-DP8CNH-NNO", "T-DC8CNT-NNO", "T-DP8CNL-NNO", "T-OL8CNT-N00", "T-OH8CNH-N00",
+                           "T-OH8CNH-NNO", "T-OL8CNT-NNO"]
 EOP_800G_VENDOR_PN_LIST = ["EOLD-168HG-02-41", "EOLD-138HG-02-41"]
+HISENSE_2X100G_VENDOR_PN = r"DEF8504-2C\d{2}-MB3$"
 
 class XcvrApiFactory(object):
     def __init__(self, reader, writer):
@@ -81,10 +85,15 @@ class XcvrApiFactory(object):
         vendor_pn = self._get_vendor_part_num()
 
         if vendor_name == 'Credo' and vendor_pn in CREDO_800G_AEC_VENDOR_PN_LIST:
-            api = self._create_api(CmisAec800gCodes, CmisAec800gMemMap, CmisAec800gApi, bank=bank)
+            xcvr_eeprom = XcvrEeprom(self.reader, self.writer, CredoAec800gMemMap(CredoAec800gCodes, bank=bank))
+            api = CredoAec800gApi(xcvr_eeprom, init_cdb_fw_handler=True)
         elif ('INNOLIGHT' in vendor_name and vendor_pn in INL_800G_VENDOR_PN_LIST) or \
              ('EOPTOLINK' in vendor_name and vendor_pn in EOP_800G_VENDOR_PN_LIST):
-            api = self._create_api(CmisCodes, CmisMemMap, CmisFr800gApi, bank=bank)
+            xcvr_eeprom = XcvrEeprom(self.reader, self.writer, CmisMemMap(CmisCodes, bank=bank))
+            api = CmisFr800gApi(xcvr_eeprom, init_cdb_fw_handler=True)
+        elif vendor_name == 'Hisense' and vendor_pn is not None and re.match(HISENSE_2X100G_VENDOR_PN, vendor_pn):
+            xcvr_eeprom = XcvrEeprom(self.reader, self.writer, CmisMemMap(CmisCodes, bank=bank))
+            api = CmisAocSingleBankApi(xcvr_eeprom, init_cdb_fw_handler=True)
         else:
             xcvr_eeprom = XcvrEeprom(self.reader, self.writer, CmisMemMap(CmisCodes, bank=bank))
             api = CmisApi(xcvr_eeprom, init_cdb_fw_handler=True)
