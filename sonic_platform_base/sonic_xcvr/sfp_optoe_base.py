@@ -313,13 +313,13 @@ class SfpOptoeBase(SfpBase):
             pass
 
     def set_optoe_max_bank_size(self, max_bank_size):
-        """Write max_bank_size to the optoe driver's sysfs entry; required before banked EEPROM offsets are accessible"""
-        try:
-            sys_path = self.get_eeprom_path().replace("eeprom", "max_bank_size")
-            with open(sys_path, mode='w') as f:
-                f.write(str(max_bank_size))
-        except (OSError, IOError):
-            pass
+        """Write max_bank_size to the optoe sysfs entry. Reads the current value first and skips the write if it already matches, since the driver tears down and recreates the eeprom bin file on every write regardless of whether the value changed. Exceptions propagate: a failure here means banked EEPROM offsets won't be accessible, and a loud failure now is preferable to a confusing read-past-EOF later."""
+        sys_path = self.get_eeprom_path().replace("eeprom", "max_bank_size")
+        with open(sys_path) as f:
+            if int(f.read().strip()) == max_bank_size:
+                return
+        with open(sys_path, mode='w') as f:
+            f.write(str(max_bank_size))
 
     def _read_optoe_max_bank_size(self):
         """Determine optoe max_bank_size from the module's CMIS BanksSupported advertisement, or None if non-CMIS, flat-memory, or unreadable."""
