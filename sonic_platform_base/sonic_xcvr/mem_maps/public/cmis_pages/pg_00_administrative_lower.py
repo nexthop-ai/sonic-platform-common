@@ -116,4 +116,3 @@ class CmisAdministrativeLowerPage(CmisPage):
         self.fields[consts.EXTENDED_MODULE_INFO_FIELD] = [
             CodeRegField(consts.MODULE_FUNCTION_TYPE, self.getaddr(57), codes.MODULE_FUNCTION_TYPE),
         ]
-

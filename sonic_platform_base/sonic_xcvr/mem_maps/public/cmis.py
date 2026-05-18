@@ -5,7 +5,24 @@
 """
 
 from ..xcvr_mem_map import XcvrMemMap
-from .cmis_pages.base import CMIS_ARCH_PAGES
+from ...fields.xcvr_field import (
+    CodeRegField,
+    DateField,
+    HexRegField,
+    NumberRegField,
+    RegBitField,
+    RegGroupField,
+    StringRegField,
+)
+from ...fields.public.cmis import CableLenField
+from ...fields import consts
+from ...fields.consts import *
+from .cmis_pages.cmis_page_consts import (
+    CMIS_EEPROM_PAGE_SIZE,
+    CMIS_NUM_NON_BANKED_PAGES,
+    CMIS_ARCH_PAGES,
+)
+from .cmis_pages.base import cmis_linear_offset
 
 # Import page classes
 from .cmis_pages import (
@@ -50,31 +67,12 @@ class CmisFlatMemMap(XcvrMemMap):
         return self._bank
 
     def getaddr(self, page, offset, page_size=128):
+        """Linear EEPROM offset for `(page, self.bank, offset)`.
+
+        See cmis_linear_offset for the full addressing rules (including bank
+        clamping for non-banked and CDB pages).
         """
-        Calculate linear offset for CMIS memory map using instance's bank.
-
-        For lower memory (page 0, offset < 128):
-            linear_offset = offset
-
-        For paged memory:
-            offset_in_paged_area = (page * page_size + offset) - 128
-            bytes_per_bank = CMIS_ARCH_PAGES * page_size  (256 * 128 = 32KB)
-            linear_offset = 128 + (bank * bytes_per_bank) + offset_in_paged_area
-
-        Simplified:
-            linear_offset = (bank * CMIS_ARCH_PAGES + page) * page_size + offset
-
-        Note: Each bank is treated as a full 256-page (32KB) architectural block,
-        even though only pages 10h-FFh (240 pages) are actually banked. This ensures
-        proper alignment and matches the kernel driver behavior.
-        """
-        if page == 0 and offset < 128:
-            # Lower memory - not affected by banking
-            return offset
-
-        # For all paged memory (including bank 0), use the unified formula
-        # that treats each bank as a 256-page (32KB) block
-        return (self.bank * CMIS_ARCH_PAGES + page) * page_size + offset
+        return cmis_linear_offset(page, self.bank, offset, page_size)
 
 class CmisMemMap(CmisFlatMemMap):
     def __init__(self, codes, bank=0):

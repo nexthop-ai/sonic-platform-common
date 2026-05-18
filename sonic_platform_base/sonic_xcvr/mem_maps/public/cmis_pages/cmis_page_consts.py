@@ -7,7 +7,6 @@
 # Constants matching optoe driver
 CMIS_EEPROM_PAGE_SIZE = 128
 CMIS_NUM_NON_BANKED_PAGES = 16   # pages 00h-0Fh
-CMIS_NUM_BANKED_PAGES = 240      # pages 10h-FFh
 CMIS_ARCH_PAGES = 256            # architectural pages per bank (matches OPTOE_ARCH_PAGES)
 
 # CMIS page number constants
@@ -20,7 +19,6 @@ TUNABLE_LASER_CTRL_STATUS_PAGE = 0x12
 MODULE_PERF_DIAG_CTRL_PAGE = 0x13
 VDM_ADVERTISING_CTRL_PAGE = 0x2F
 CDB_MESSAGE_PAGE = 0x9F
-
 
 # ELSFP-specific CMIS pages
 ELSFP_ADVERTISEMENTS_FLAGS_CTRL_PAGE = 0x1A
