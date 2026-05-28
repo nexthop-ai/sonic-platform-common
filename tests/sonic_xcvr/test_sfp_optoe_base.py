@@ -3,7 +3,8 @@ from mock import MagicMock
 from mock import patch
 from mock import PropertyMock
 import pytest
-from sonic_platform_base.sonic_xcvr.sfp_optoe_base import SfpOptoeBase, SFP_OPTOE_UPPER_PAGE0_OFFSET, SFP_OPTOE_PAGE_SELECT_OFFSET
+from sonic_platform_base.sonic_xcvr.sfp_optoe_base import SfpOptoeBase
+from sonic_platform_base.sonic_xcvr.optoe_eeprom_access import SFP_OPTOE_UPPER_PAGE0_OFFSET, SFP_OPTOE_PAGE_SELECT_OFFSET
 from sonic_platform_base.sonic_xcvr.api.public.c_cmis import CCmisApi
 from sonic_platform_base.sonic_xcvr.api.public.cmis import CmisApi
 from sonic_platform_base.sonic_xcvr.mem_maps.public.c_cmis import CCmisMemMap 
@@ -220,7 +221,7 @@ class TestSfpOptoeBase(object):
 
     @patch('sonic_platform_base.sonic_xcvr.sfp_optoe_base.SfpBase.refresh_xcvr_api')
     @patch.object(SfpOptoeBase, 'set_optoe_max_bank_size')
-    @patch.object(SfpOptoeBase, '_read_optoe_max_bank_size')
+    @patch.object(SfpOptoeBase, 'read_optoe_max_bank_size')
     @patch.object(SfpOptoeBase, 'bank', new_callable=PropertyMock)
     def test_refresh_xcvr_api_bank_zero_skips_sync(self, mock_bank, mock_read, mock_set, mock_super):
         mock_bank.return_value = 0
@@ -231,7 +232,7 @@ class TestSfpOptoeBase(object):
 
     @patch('sonic_platform_base.sonic_xcvr.sfp_optoe_base.SfpBase.refresh_xcvr_api')
     @patch.object(SfpOptoeBase, 'set_optoe_max_bank_size')
-    @patch.object(SfpOptoeBase, '_read_optoe_max_bank_size')
+    @patch.object(SfpOptoeBase, 'read_optoe_max_bank_size')
     @patch.object(SfpOptoeBase, 'bank', new_callable=PropertyMock)
     def test_refresh_xcvr_api_nonzero_bank_writes_max_bank_size(self, mock_bank, mock_read, mock_set, mock_super):
         mock_bank.return_value = 1
@@ -275,7 +276,7 @@ class TestSfpOptoeBase(object):
                 return bytearray([banks_byte]) if banks_byte is not None else None
             return None
         with patch.object(SfpOptoeBase, 'read_eeprom', side_effect=fake_read):
-            assert self.sfp_optoe_api._read_optoe_max_bank_size() == expected
+            assert self.sfp_optoe_api.read_optoe_max_bank_size() == expected
 
     def test_set_power(self):
         mode = 1
