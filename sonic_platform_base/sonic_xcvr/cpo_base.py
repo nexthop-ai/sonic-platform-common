@@ -1,8 +1,8 @@
-from sonic_platform_base.sonic_xcvr.eeprom_access import EepromAccessMixin
+from sonic_platform_base.sonic_xcvr.eeprom_rw import EepromReadWriteMixin
 from sonic_platform_base.sonic_xcvr.cpo_api_factory import OeApiFactory, ElsfpApiFactory, CpoHardwareId
 
 
-class OeBase(EepromAccessMixin):
+class OeBase(EepromReadWriteMixin):
     def __init__(self, hardware_id: CpoHardwareId, bank: int = 0):
         self.bank = bank
         self._oe_api = None
@@ -20,7 +20,7 @@ class OeBase(EepromAccessMixin):
     # TODO: Implement OE-specific methods
 
 
-class ElsfpBase(EepromAccessMixin):
+class ElsfpBase(EepromReadWriteMixin):
     def __init__(self, hardware_id: CpoHardwareId = None, bank: int = 0):
         self.bank = bank
         self._elsfp_api = None

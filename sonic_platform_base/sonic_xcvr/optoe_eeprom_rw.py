@@ -1,4 +1,4 @@
-from sonic_platform_base.sonic_xcvr.eeprom_access import EepromAccessMixin
+from sonic_platform_base.sonic_xcvr.eeprom_rw import EepromReadWriteMixin
 from abc import ABC, abstractmethod
 
 SFP_OPTOE_PAGE_SELECT_OFFSET = 127
@@ -14,7 +14,7 @@ CMIS_BANKS_SUPPORTED_FILE_OFFSET = 270
 # CMIS AdvBnkSupport (page 01h byte 142, bits 0-1): 00b->1, 01b->2, 10b->4 banks.
 CMIS_BANKS_SUPPORTED_TO_MAX_BANK_SIZE = {0: 0, 1: 2, 2: 4}
 
-class OptoeEepromAccessMixin(EepromAccessMixin, ABC):
+class OptoeEepromReadWriteMixin(EepromReadWriteMixin, ABC):
     @abstractmethod
     def get_eeprom_path(self) -> str:
         pass
