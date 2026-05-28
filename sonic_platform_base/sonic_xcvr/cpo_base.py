@@ -1,5 +1,9 @@
 from sonic_platform_base.sonic_xcvr.eeprom_rw import EepromReadWriteMixin
 from sonic_platform_base.sonic_xcvr.cpo_api_factory import OeApiFactory, ElsfpApiFactory, CpoHardwareId
+from sonic_platform_base.sonic_xcvr.mem_maps.public.cmis_pages.cmis_page_consts import (
+    CMIS_ARCH_PAGES,
+    CMIS_EEPROM_PAGE_SIZE
+)
 
 
 class OeBase(EepromReadWriteMixin):
@@ -36,6 +40,33 @@ class ElsfpBase(EepromReadWriteMixin):
         return self._elsfp_api
 
     # TODO: Implement ELSFP-specific methods
+
+
+class JointModeElsfpBase(ElsfpBase):
+    """ELSFP base for devices that operate in "joint mode", where the ELSFP
+    region is relocated within a shared (e.g. CMIS MCU) address space.
+
+    The ELSFP MemMap emits offsets in its own view starting at page 0. On these
+    devices that view must be shifted to start at ``ELSFP_PAGE0_OFFSET`` within
+    the underlying linear address space. The page-0 offset is the only
+    thing that varies between vendors -- subclasses set ``ELSFP_PAGE0_OFFSET``
+    and everything else (translation + EEPROM access) is handled here.
+    """
+
+    # Offset of the relocated ELSFP page 0 within the underlying address space.
+    # Vendor subclasses must override this.
+    ELSFP_PAGE0_OFFSET = None
+    BANK_STRIDE = CMIS_ARCH_PAGES * CMIS_EEPROM_PAGE_SIZE
+
+    def _translate(self, offset):
+        bank, bank_relative_offset = divmod(offset, self.BANK_STRIDE)
+        return bank * self.BANK_STRIDE + self.ELSFP_PAGE0_OFFSET + bank_relative_offset
+
+    def read_eeprom(self, offset, num_bytes):
+        return super().read_eeprom(self._translate(offset), num_bytes)
+
+    def write_eeprom(self, offset, num_bytes, write_buffer):
+        return super().write_eeprom(self._translate(offset), num_bytes, write_buffer)
 
 
 class CpoBase:
