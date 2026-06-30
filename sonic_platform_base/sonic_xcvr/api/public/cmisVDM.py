@@ -6,6 +6,7 @@
 
 from ...fields import consts
 from ..xcvr_api import XcvrApi
+from ...utils.cache import read_only_cached_api_return
 import struct
 import time
 
@@ -29,9 +30,35 @@ class CmisVdmApi(XcvrApi):
     VDM_OBSERVABLE_STATISTIC = 0x2  # Statistic (min/max/avg) observable types
     VDM_OBSERVABLE_ALL = 0x3        # Both basic and statistic
 
+    # Default caching disabled; CmisApi wires cache_enabled onto the instance.
+    cache_enabled = False
+
     def __init__(self, xcvr_eeprom):
         super(CmisVdmApi, self).__init__(xcvr_eeprom)
-    
+
+    @read_only_cached_api_return
+    def _read_vdm_descriptor_page(self, page):
+        '''
+        Read and cache a raw VDM descriptor page (0x20-0x23).
+
+        The VDM descriptors -- observable Type ID, threshold-set ID, and
+        monitored-lane assignment for each of the 64 slots in the page -- are a
+        static, read-only module advertisement in CMIS: they describe how the
+        VDM value/threshold pages are laid out and do not change while the
+        module is powered/plugged in. So the descriptor page is read once and
+        reused across DOM cycles, removing one 128 B page read per descriptor
+        page per port per cycle.
+
+        Caching is handled by read_only_cached_api_return, keyed per descriptor
+        page: it respects the class-level cache_enabled flag and only memoizes a
+        non-empty read, so a transient read failure is retried rather than
+        cached. The cache lives on the api object, which xcvrd recreates on
+        module re-insertion, so it is naturally invalidated when the module
+        changes.
+        '''
+        offset = page * PAGE_SIZE + PAGE_OFFSET
+        return self.xcvr_eeprom.read_raw(offset, PAGE_SIZE)
+
     def get_F16(self, value):
         '''
         This function converts raw data to "F16" format defined in cmis.
@@ -69,7 +96,7 @@ class CmisVdmApi(XcvrApi):
         '''
         if page not in [0x20, 0x21, 0x22, 0x23]:
             raise ValueError('Page not in VDM Descriptor range!')
-        vdm_descriptor = self.xcvr_eeprom.read_raw(page * PAGE_SIZE + PAGE_OFFSET, PAGE_SIZE)
+        vdm_descriptor = self._read_vdm_descriptor_page(page)
         if not vdm_descriptor:
             return {}
 
