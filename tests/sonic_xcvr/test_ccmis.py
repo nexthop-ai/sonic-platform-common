@@ -6,6 +6,7 @@ from sonic_platform_base.sonic_xcvr.mem_maps.public.cmis.c_cmis import CCmisMemM
 from sonic_platform_base.sonic_xcvr.xcvr_eeprom import XcvrEeprom
 from sonic_platform_base.sonic_xcvr.codes.public.cmis import CmisCodes
 from sonic_platform_base.sonic_xcvr.fields import consts
+from sonic_platform_base.sonic_xcvr.utils.common import get_F16, set_F16
 
 
 class TestCCmis(object):
@@ -588,4 +589,313 @@ class TestCCmis(object):
         self.api.xcvr_eeprom.write.return_value = mock_response
         result = self.api.unfreeze_vdm_stats()
         assert result == expected
+
+    @staticmethod
+    def _byte_reader(byte_map):
+        """Return a reader(offset, size) that serves bytes from byte_map (default 0)."""
+        def reader(offset, size):
+            return bytes(byte_map.get(offset + i, 0) for i in range(size))
+        return reader
+
+    def _make_fdd_fed_api(self, byte_map):
+        """Build a CCmisApi whose EEPROM decodes through the real C-CMIS mem map."""
+        eeprom = XcvrEeprom(self._byte_reader(byte_map), MagicMock(), self.mem_map)
+        api = CCmisApi(eeprom, init_cdb_fw_handler=False)
+        api.is_flat_memory = MagicMock(return_value=False)
+        api.is_coherent_module = MagicMock(return_value=True)
+        return api
+
+    @pytest.mark.parametrize("value", [
+        0.0,
+        1.25e-3,
+        5e-5,
+        1e-2,
+        0.5,
+        1.0,
+    ])
+    def test_ber_f16_roundtrip(self, value):
+        raw = set_F16(value)
+        assert raw is not None
+        assert 0 <= raw <= 0xffff
+        decoded = get_F16(raw)
+        # F16 has finite precision; allow a small relative tolerance.
+        if value == 0:
+            assert decoded == 0
+        else:
+            assert abs(decoded - value) <= value * 1e-2
+
+    @pytest.mark.parametrize("value, expected", [
+        (None, None),
+        (-1.0, None),
+        (1e30, None),   # too large to represent in F16
+    ])
+    def test_set_F16_out_of_range(self, value, expected):
+        assert set_F16(value) == expected
+
+    def test_mem_map_field_decode_all_pages(self):
+        # 1.25e-3 encodes to F16 raw 0x94E2 (exp=18, mantissa=1250).
+        raw = 0x94E2
+        byte_map = {
+            # Page 30h media thresholds / enables
+            6304: raw >> 8, 6305: raw & 0xff,             # FDD_RAISE_THRESH
+            6308: raw >> 8, 6309: raw & 0xff,             # FED_RAISE_THRESH
+            6312: 0x3,                                    # FDD_ENABLE (bit0) + FED_ENABLE (bit1)
+            # Page 38h host thresholds / enables
+            7296: raw >> 8, 7297: raw & 0xff,             # FDD_ACT_BER_THRESH
+            7300: raw >> 8, 7301: raw & 0xff,             # FED_ACT_BER_THRESH
+            7304: 0x3,                                    # FDD_MON_ENABLE (bit0) + FED_MON_ENABLE (bit1)
+            # Page 33h media flags
+            6660: 0x3,                                    # L_RX_FDD_PM (bit0) + L_RX_FED_PM (bit1)
+            # Page 3Bh host flags
+            7744: 0x3,                                    # L_TX_FDD_PM (bit0) + L_TX_FED_PM (bit1)
+            # Page 44h advertisement bits
+            8834: 0x3,                                    # MEDIA_RX_FDD/FED_ALM_IMPL
+            8836: 0x3,                                    # HOST_TX_FDD/FED_ALM_IMPL
+        }
+        api = self._make_fdd_fed_api(byte_map)
+        assert api.xcvr_eeprom.read(consts.FDD_RAISE_THRESH) == raw
+        assert api.xcvr_eeprom.read(consts.FED_RAISE_THRESH) == raw
+        assert api.xcvr_eeprom.read(consts.FDD_ENABLE) == 1
+        assert api.xcvr_eeprom.read(consts.FED_ENABLE) == 1
+        assert api.xcvr_eeprom.read(consts.FDD_ACT_BER_THRESH) == raw
+        assert api.xcvr_eeprom.read(consts.FED_ACT_BER_THRESH) == raw
+        assert api.xcvr_eeprom.read(consts.L_RX_FDD_PM) == 1
+        assert api.xcvr_eeprom.read(consts.L_RX_FED_PM) == 1
+        assert api.xcvr_eeprom.read(consts.L_TX_FDD_PM) == 1
+        assert api.xcvr_eeprom.read(consts.L_TX_FED_PM) == 1
+        assert api.xcvr_eeprom.read(consts.MEDIA_FDD_FED_FLAGS) == {
+            consts.L_RX_FED_PM: True, consts.L_RX_FDD_PM: True}
+        assert api.xcvr_eeprom.read(consts.HOST_FDD_FED_FLAGS) == {
+            consts.L_TX_FED_PM: True, consts.L_TX_FDD_PM: True}
+        assert api.xcvr_eeprom.read(consts.MEDIA_RX_FDD_ALM_IMPL) == 1
+        assert api.xcvr_eeprom.read(consts.HOST_TX_FED_ALM_IMPL) == 1
+
+    def test_write_fdd_fed_fields_through_mem_map(self):
+        """Drive the setters through the real mem map to exercise encode()."""
+        byte_map = {
+            8584: 0x3,  # Page 42h byte 136: media FDD/FED PM implemented
+            8585: 0x3,  # Page 42h byte 137: host FDD/FED PM implemented
+        }
+
+        def writer(offset, size, data):
+            for i in range(size):
+                byte_map[offset + i] = data[i]
+            return True
+
+        eeprom = XcvrEeprom(self._byte_reader(byte_map), writer, self.mem_map)
+        api = CCmisApi(eeprom, init_cdb_fw_handler=False)
+        api.is_flat_memory = MagicMock(return_value=False)
+        api.is_coherent_module = MagicMock(return_value=True)
+
+        media_cfg = {
+            'media_fdd_raise_thresh': 1.25e-3, 'media_fdd_clear_thresh': 5e-4, 'media_fdd_enable': True,
+            'media_fed_raise_thresh': 1.25e-3, 'media_fed_clear_thresh': 5e-4, 'media_fed_enable': False,
+        }
+        assert api.set_transceiver_media_fdd_fed_config(media_cfg) is True
+
+        host_cfg = {
+            'host_fdd_act_thresh': 1.25e-3, 'host_fdd_clear_thresh': 5e-4, 'host_fdd_enable': True,
+            'host_fed_act_thresh': 1.25e-3, 'host_fed_clear_thresh': 5e-4, 'host_fed_enable': True,
+        }
+        assert api.set_transceiver_host_fdd_fed_config(host_cfg) is True
+
+        # Enable bits share a byte; read-before-write must set the correct bit
+        # without clobbering its sibling.
+        assert byte_map[6312] == 0x1   # media: FDD (bit0) set, FED (bit1) clear
+        assert byte_map[7304] == 0x3   # host:  FDD (bit0) + FED (bit1) set
+
+        media = api.get_transceiver_media_fdd_fed_config()
+        assert abs(media['media_fdd_raise_thresh'] - 1.25e-3) < 1e-9
+        assert media['media_fdd_enable'] is True
+        assert media['media_fed_enable'] is False
+
+        host = api.get_transceiver_host_fdd_fed_config()
+        assert abs(host['host_fed_act_thresh'] - 1.25e-3) < 1e-9
+        assert host['host_fdd_enable'] is True
+        assert host['host_fed_enable'] is True
+
+    def test_get_supported_fdd_fed_ber_config(self):
+        assert self.api.get_supported_fdd_fed_ber_config() == (0.0, 1.0)
+
+    def test_get_media_fdd_fed_config_decode(self):
+        raw = 0x94E2  # -> 1.25e-3
+        byte_map = {
+            6304: raw >> 8, 6305: raw & 0xff,
+            6308: raw >> 8, 6309: raw & 0xff,
+            6312: 0x3,
+            8584: 0x3,  # Page 42h, Byte 136: Media FDD/FED PM implemented
+            8834: 0x3,  # Page 44h, Byte 130: Media FDD/FED Alarms implemented
+        }
+        api = self._make_fdd_fed_api(byte_map)
+        config = api.get_transceiver_media_fdd_fed_config()
+        assert abs(config['media_fdd_raise_thresh'] - 1.25e-3) < 1e-9
+        assert abs(config['media_fed_raise_thresh'] - 1.25e-3) < 1e-9
+        assert config['media_fdd_enable'] is True
+        assert config['media_fed_enable'] is True
+
+    def test_get_host_fdd_fed_config_decode(self):
+        raw = 0x94E2  # -> 1.25e-3
+        byte_map = {
+            7296: raw >> 8, 7297: raw & 0xff,
+            7300: raw >> 8, 7301: raw & 0xff,
+            7304: 0x3,
+            8585: 0x3,  # Page 42h, Byte 137: Host FDD/FED PM implemented
+            8836: 0x3,  # Page 44h, Byte 132: Host FDD/FED Alarms implemented
+        }
+        api = self._make_fdd_fed_api(byte_map)
+        config = api.get_transceiver_host_fdd_fed_config()
+        assert abs(config['host_fdd_act_thresh'] - 1.25e-3) < 1e-9
+        assert abs(config['host_fed_act_thresh'] - 1.25e-3) < 1e-9
+        assert config['host_fdd_enable'] is True
+        assert config['host_fed_enable'] is True
+
+    def test_get_media_fdd_fed_flags_decode(self):
+        byte_map = {6660: 0x3, 8834: 0x3}
+        api = self._make_fdd_fed_api(byte_map)
+        flags = api.get_transceiver_media_fdd_fed_flags()
+        assert flags == {'media_rx_fdd_asserted': True, 'media_rx_fed_asserted': True}
+
+    def test_get_host_fdd_fed_flags_decode(self):
+        byte_map = {7744: 0x3, 8836: 0x3}
+        api = self._make_fdd_fed_api(byte_map)
+        flags = api.get_transceiver_host_fdd_fed_flags()
+        assert flags == {'host_tx_fdd_asserted': True, 'host_tx_fed_asserted': True}
+
+    def test_fdd_fed_flags_read_each_cor_byte_once(self):
+        self.api._is_media_rx_fdd_alm_implemented = MagicMock(return_value=True)
+        self.api._is_media_rx_fed_alm_implemented = MagicMock(return_value=True)
+        self.api.xcvr_eeprom.read = MagicMock(return_value={
+            consts.L_RX_FDD_PM: True, consts.L_RX_FED_PM: True})
+        assert self.api.get_transceiver_media_fdd_fed_flags() == {
+            'media_rx_fdd_asserted': True, 'media_rx_fed_asserted': True}
+        self.api.xcvr_eeprom.read.assert_called_once_with(consts.MEDIA_FDD_FED_FLAGS)
+
+    def test_fdd_fed_config_gating_not_implemented(self):
+        # No advertisement bits set -> gated getters return empty dicts.
+        api = self._make_fdd_fed_api({})
+        assert api.get_transceiver_media_fdd_fed_config() == {}
+        assert api.get_transceiver_media_fdd_fed_flags() == {}
+        assert api.get_transceiver_host_fdd_fed_config() == {}
+        assert api.get_transceiver_host_fdd_fed_flags() == {}
+        assert api.get_transceiver_fdd_fed_config() == {}
+        assert api.get_transceiver_fdd_fed_flags() == {}
+
+    @pytest.mark.parametrize("is_coherent, is_flat", [
+        (False, False),   # non-coherent module
+        (True, True),     # flat memory
+    ])
+    def test_fdd_fed_config_gating_non_coherent_or_flat(self, is_coherent, is_flat):
+        # Advertisement bits set, but coherent/paged preconditions unmet -> gated off.
+        byte_map = {6312: 0x3, 6660: 0x3, 8834: 0x3,
+                    7304: 0x3, 7744: 0x3, 8836: 0x3}
+        api = self._make_fdd_fed_api(byte_map)
+        api.is_coherent_module = MagicMock(return_value=is_coherent)
+        api.is_flat_memory = MagicMock(return_value=is_flat)
+        assert api.get_transceiver_fdd_fed_config() == {}
+        assert api.get_transceiver_fdd_fed_flags() == {}
+
+    def test_fdd_fed_config_gating_partial(self):
+        # Only media FDD advertised (bit0); FED (bit1) unset -> only FDD keys present.
+        byte_map = {6312: 0x1, 8584: 0x1, 8834: 0x1}
+        api = self._make_fdd_fed_api(byte_map)
+        config = api.get_transceiver_media_fdd_fed_config()
+        assert 'media_fdd_enable' in config
+        assert 'media_fed_enable' not in config
+
+    def test_get_fdd_fed_config_aggregator(self):
+        raw = 0x94E2
+        byte_map = {
+            6304: raw >> 8, 6305: raw & 0xff, 6312: 0x1, 8584: 0x1, 8834: 0x1,   # media FDD only
+            7296: raw >> 8, 7297: raw & 0xff, 7304: 0x1, 8585: 0x1, 8836: 0x1,
+            8960: 0x1,  # host FDD only
+        }
+        api = self._make_fdd_fed_api(byte_map)
+        config = api.get_transceiver_fdd_fed_config()
+        assert 'media_fdd_raise_thresh' in config
+        assert 'host_fdd_act_thresh' in config
+        assert 'media_fed_raise_thresh' not in config
+        assert 'host_fed_act_thresh' not in config
+
+    def test_get_fdd_fed_flags_aggregator(self):
+        byte_map = {6660: 0x3, 8834: 0x3, 7744: 0x3, 8836: 0x3}
+        api = self._make_fdd_fed_api(byte_map)
+        flags = api.get_transceiver_fdd_fed_flags()
+        assert flags == {'media_rx_fdd_asserted': True, 'media_rx_fed_asserted': True,
+                         'host_tx_fdd_asserted': True, 'host_tx_fed_asserted': True}
+
+    def test_set_media_fdd_fed_config_roundtrip(self):
+        self.api._is_media_rx_fdd_pm_implemented = MagicMock(return_value=True)
+        self.api._is_media_rx_fed_pm_implemented = MagicMock(return_value=True)
+        writes = {}
+        self.api.xcvr_eeprom.write = MagicMock(
+            side_effect=lambda field, value: writes.__setitem__(field, value) or True)
+        self.api.xcvr_eeprom.read = MagicMock(side_effect=lambda field: writes.get(field))
+        config = {
+            'media_fdd_raise_thresh': 1.25e-3,
+            'media_fdd_clear_thresh': 5e-4,
+            'media_fdd_enable': True,
+            'media_fed_raise_thresh': 1e-3,
+            'media_fed_clear_thresh': 5e-4,
+            'media_fed_enable': False,
+        }
+        assert self.api.set_transceiver_media_fdd_fed_config(config) is True
+        # Thresholds are written as F16 raw ints that decode back to the input.
+        assert abs(get_F16(writes[consts.FDD_RAISE_THRESH]) - 1.25e-3) < 1e-9
+        assert abs(get_F16(writes[consts.FDD_CLEAR_THRESH]) - 5e-4) < 1e-9
+        assert writes[consts.FDD_ENABLE] == 1
+        assert writes[consts.FED_ENABLE] == 0
+
+    def test_set_host_fdd_fed_config_roundtrip(self):
+        self.api._is_host_tx_fdd_pm_implemented = MagicMock(return_value=True)
+        self.api._is_host_tx_fed_pm_implemented = MagicMock(return_value=True)
+        self.api._is_fdd_mon_enable_implemented = MagicMock(return_value=True)
+        self.api._is_fed_mon_enable_implemented = MagicMock(return_value=True)
+        writes = {}
+        self.api.xcvr_eeprom.write = MagicMock(
+            side_effect=lambda field, value: writes.__setitem__(field, value) or True)
+        self.api.xcvr_eeprom.read = MagicMock(side_effect=lambda field: writes.get(field))
+        config = {
+            'host_fed_act_thresh': 2e-3,
+            'host_fed_clear_thresh': 1e-3,
+            'host_fed_enable': True,
+        }
+        assert self.api.set_transceiver_host_fdd_fed_config(config) is True
+        assert abs(get_F16(writes[consts.FED_ACT_BER_THRESH]) - 2e-3) < 1e-9
+        assert writes[consts.FED_MON_ENABLE] == 1
+        # FDD side not present -> not written.
+        assert consts.FDD_ACT_BER_THRESH not in writes
+
+    def test_write_fdd_fed_config_requires_matching_readback(self):
+        self.api._is_media_rx_fdd_pm_implemented = MagicMock(return_value=True)
+        self.api.xcvr_eeprom.write = MagicMock(return_value=True)
+        self.api.xcvr_eeprom.read = MagicMock(return_value=0)
+        assert self.api.set_transceiver_media_fdd_fed_config({'media_fdd_enable': True}) is False
+
+    def test_set_config_rejected_when_not_implemented(self):
+        self.api._is_media_rx_fdd_pm_implemented = MagicMock(return_value=False)
+        self.api._is_media_rx_fed_pm_implemented = MagicMock(return_value=False)
+        self.api.xcvr_eeprom.write = MagicMock(return_value=True)
+        result = self.api.set_transceiver_media_fdd_fed_config({'media_fdd_enable': True})
+        assert result is False
+        self.api.xcvr_eeprom.write.assert_not_called()
+
+    def test_set_config_out_of_range_fails(self):
+        self.api._is_media_rx_fdd_pm_implemented = MagicMock(return_value=True)
+        self.api._is_media_rx_fed_pm_implemented = MagicMock(return_value=True)
+        self.api.xcvr_eeprom.write = MagicMock(return_value=True)
+        result = self.api.set_transceiver_media_fdd_fed_config({'media_fdd_raise_thresh': -1.0})
+        assert result is False
+
+    def test_set_fdd_fed_config_aggregator(self):
+        config = {'media_fdd_enable': True, 'host_fed_enable': True}
+        with patch.object(self.api, 'set_transceiver_media_fdd_fed_config', return_value=True) as m_media, \
+             patch.object(self.api, 'set_transceiver_host_fdd_fed_config', return_value=True) as m_host:
+            assert self.api.set_transceiver_fdd_fed_config(config) is True
+            m_media.assert_called_once_with(config)
+            m_host.assert_called_once_with(config)
+
+    def test_set_fdd_fed_config_invalid_input(self):
+        assert self.api.set_transceiver_media_fdd_fed_config(None) is False
+        assert self.api.set_transceiver_host_fdd_fed_config("not-a-dict") is False
+        assert self.api.set_transceiver_fdd_fed_config([]) is False
 

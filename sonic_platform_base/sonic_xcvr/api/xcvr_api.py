@@ -216,6 +216,70 @@ class XcvrApi(object):
         """
         raise NotImplementedError
 
+    def get_supported_fdd_fed_ber_config(self):
+        """
+        Retrieves the (min, max) BER threshold supported by the FDD/FED
+        raise/clear knobs (applicable for C-CMIS)
+        """
+        raise NotImplementedError
+
+    def get_transceiver_media_fdd_fed_config(self):
+        """
+        Retrieves media-lane FDD/FED BER threshold configuration (applicable for C-CMIS)
+        """
+        raise NotImplementedError
+
+    def get_transceiver_media_fdd_fed_flags(self):
+        """
+        Retrieves latched media-lane FDD/FED PM flags (applicable for C-CMIS)
+        """
+        raise NotImplementedError
+
+    def get_transceiver_host_fdd_fed_config(self):
+        """
+        Retrieves host data-path FDD/FED BER threshold configuration (applicable for C-CMIS)
+        """
+        raise NotImplementedError
+
+    def get_transceiver_host_fdd_fed_flags(self):
+        """
+        Retrieves latched host data-path FDD/FED PM flags (applicable for C-CMIS)
+        """
+        raise NotImplementedError
+
+    def get_transceiver_fdd_fed_config(self):
+        """
+        Retrieves combined media-lane and host data-path FDD/FED BER threshold
+        configuration (applicable for C-CMIS)
+        """
+        raise NotImplementedError
+
+    def get_transceiver_fdd_fed_flags(self):
+        """
+        Retrieves combined media-lane and host data-path FDD/FED PM flags
+        (applicable for C-CMIS)
+        """
+        raise NotImplementedError
+
+    def set_transceiver_media_fdd_fed_config(self, config):
+        """
+        Writes media-lane FDD/FED BER threshold configuration (applicable for C-CMIS)
+        """
+        raise NotImplementedError
+
+    def set_transceiver_host_fdd_fed_config(self, config):
+        """
+        Writes host data-path FDD/FED BER threshold configuration (applicable for C-CMIS)
+        """
+        raise NotImplementedError
+
+    def set_transceiver_fdd_fed_config(self, config):
+        """
+        Writes combined media-lane and host data-path FDD/FED BER threshold
+        configuration (applicable for C-CMIS)
+        """
+        raise NotImplementedError
+
     def is_transceiver_vdm_supported(self):
         """
         Retrieves VDM support status for this xcvr (applicable for CMIS and C-CMIS)

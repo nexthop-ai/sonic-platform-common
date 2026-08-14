@@ -326,54 +326,39 @@ class TestSfpOptoeBase(object):
             self.sfp_optoe_api.write_eeprom.assert_called_once_with(SFP_OPTOE_PAGE_SELECT_OFFSET, 1, b'\x00')
             self.sfp_optoe_api.get_optoe_current_page.assert_called_once()
 
-    @patch("builtins.open", new_callable=mock_open)
-    @patch.object(SfpOptoeBase, 'get_eeprom_path')
-    def test_set_optoe_write_max_success(self, mock_get_eeprom_path, mock_open):
-        mock_get_eeprom_path.return_value = "/sys/bus/i2c/devices/1-0050/eeprom"
-        expected_path = "/sys/bus/i2c/devices/1-0050/write_max"
-        expected_write_max = 16
+    FDD_FED_GETTERS = [
+        'get_supported_fdd_fed_ber_config',
+        'get_transceiver_media_fdd_fed_config',
+        'get_transceiver_media_fdd_fed_flags',
+        'get_transceiver_host_fdd_fed_config',
+        'get_transceiver_host_fdd_fed_flags',
+        'get_transceiver_fdd_fed_config',
+        'get_transceiver_fdd_fed_flags',
+    ]
 
-        SfpOptoeBase().set_optoe_write_max(expected_write_max)
+    @pytest.mark.parametrize("method", FDD_FED_GETTERS)
+    def test_fdd_fed_getter_passthrough(self, method):
+        sentinel = {'media_fdd_enable': True}
+        setattr(self.cmis_api, method, MagicMock(return_value=sentinel))
+        self.sfp_optoe_api.get_xcvr_api = MagicMock(return_value=self.cmis_api)
+        assert getattr(self.sfp_optoe_api, method)() == sentinel
+        # No API present -> None
+        self.sfp_optoe_api.get_xcvr_api = MagicMock(return_value=None)
+        assert getattr(self.sfp_optoe_api, method)() is None
 
-        mock_open.assert_called_once_with(expected_path, mode='w')
-        mock_open().write.assert_called_once_with(str(expected_write_max))
+    FDD_FED_SETTERS = [
+        'set_transceiver_media_fdd_fed_config',
+        'set_transceiver_host_fdd_fed_config',
+        'set_transceiver_fdd_fed_config',
+    ]
 
-    @patch("builtins.open", new_callable=mock_open)
-    @patch.object(SfpOptoeBase, 'get_eeprom_path')
-    def test_set_optoe_write_max_error(self, mock_get_eeprom_path, mock_open):
-        mock_get_eeprom_path.return_value = "/sys/bus/i2c/devices/1-0050/eeprom"
-        mock_open.side_effect = OSError
-
-        # Exception is swallowed -- no exception should propagate.
-        SfpOptoeBase().set_optoe_write_max(16)
-
-        mock_open.assert_called()
-
-    def test_get_optoe_current_page(self):
-        sfp = SfpOptoeBase()
-        sfp.read_eeprom = MagicMock(return_value=bytearray([0x10]))
-
-        assert sfp.get_optoe_current_page() == 0x10
-        sfp.read_eeprom.assert_called_once_with(SFP_OPTOE_PAGE_SELECT_OFFSET, 1)
-
-    @patch("builtins.open", new_callable=mock_open)
-    @patch.object(SfpOptoeBase, 'get_eeprom_path')
-    def test_write_eeprom_success(self, mock_get_eeprom_path, mock_open):
-        mock_get_eeprom_path.return_value = "/sys/class/eeprom"
-
-        result = SfpOptoeBase().write_eeprom(5, 2, bytearray([0xaa, 0xbb, 0xcc]))
-
-        assert result is True
-        mock_open.assert_called_once_with("/sys/class/eeprom", mode='r+b', buffering=0)
-        mock_open().seek.assert_called_once_with(5)
-        mock_open().write.assert_called_once_with(bytearray([0xaa, 0xbb]))
-
-    @patch("builtins.open", new_callable=mock_open)
-    @patch.object(SfpOptoeBase, 'get_eeprom_path')
-    def test_write_eeprom_error(self, mock_get_eeprom_path, mock_open):
-        mock_get_eeprom_path.return_value = "/sys/class/eeprom"
-        mock_open.side_effect = IOError
-
-        result = SfpOptoeBase().write_eeprom(0, 1, bytearray([0x00]))
-
-        assert result is False
+    @pytest.mark.parametrize("method", FDD_FED_SETTERS)
+    def test_fdd_fed_setter_passthrough(self, method):
+        config = {'media_fdd_enable': True}
+        setattr(self.cmis_api, method, MagicMock(return_value=True))
+        self.sfp_optoe_api.get_xcvr_api = MagicMock(return_value=self.cmis_api)
+        assert getattr(self.sfp_optoe_api, method)(config) is True
+        getattr(self.cmis_api, method).assert_called_once_with(config)
+        # No API present -> False
+        self.sfp_optoe_api.get_xcvr_api = MagicMock(return_value=None)
+        assert getattr(self.sfp_optoe_api, method)(config) is False

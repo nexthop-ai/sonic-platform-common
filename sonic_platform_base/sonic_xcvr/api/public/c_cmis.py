@@ -7,6 +7,11 @@ from ...fields import consts
 from .cmis import CmisApi, CMIS_VDM_KEY_TO_DB_PREFIX_KEY_MAP, CMIS_XCVR_INFO_DEFAULT_DICT
 import time
 import copy
+<<<<<<< HEAD
+=======
+from ...utils.cache import read_only_cached_api_return
+from ...utils.common import get_F16, set_F16
+>>>>>>> 9322fc3 (NOS-11650: Updated C-CMIS FDD/FED memory maps and constants (#149))
 
 C_CMIS_DELTA_VDM_KEY_TO_DB_PREFIX_KEY_MAP = {
     'Modulator Bias X/I [%]' : 'biasxi',
@@ -199,6 +204,362 @@ class CCmisApi(CmisApi):
         time.sleep(1)
         return status
 
+<<<<<<< HEAD
+=======
+    @read_only_cached_api_return
+    def _is_rx_clockrec_pm_implemented(self):
+        '''
+        Returns True if the Page 42h clock recovery loop PM advertisement bit is
+        set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.RX_CLOCK_REC_IMPL)))
+
+    @read_only_cached_api_return
+    def _is_rx_lg_sopmd_pm_implemented(self):
+        '''
+        Returns True if the Page 42h low-granularity SOPMD PM advertisement bit is
+        set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.RX_LG_SOPMD_IMPL)))
+
+    @read_only_cached_api_return
+    def _is_rx_snr_margin_pm_implemented(self):
+        '''
+        Returns True if the Page 42h SNR margin PM advertisement bit is set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.RX_SNR_MARGIN_IMPL)))
+
+    @read_only_cached_api_return
+    def _is_rx_qfactor_pm_implemented(self):
+        '''
+        Returns True if the Page 42h Q-factor PM advertisement bit is set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.RX_QFACTOR_IMPL)))
+
+    @read_only_cached_api_return
+    def _is_rx_qmargin_pm_implemented(self):
+        '''
+        Returns True if the Page 42h Q-margin PM advertisement bit is set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.RX_QMARGIN_IMPL)))
+
+    # FDD/FED PM Advertisement (page 42h)
+
+    @read_only_cached_api_return
+    def _is_media_rx_fdd_pm_implemented(self):
+        '''
+        Returns True if the Page 42h media-lane FDD pm advertisement bit is
+        set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.RX_MEDIA_FDD_PM_IMPL)))
+
+    @read_only_cached_api_return
+    def _is_media_rx_fed_pm_implemented(self):
+        '''
+        Returns True if the Page 42h media-lane FED pm advertisement bit is
+        set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.RX_MEDIA_FED_PM_IMPL)))
+
+    @read_only_cached_api_return
+    def _is_host_tx_fdd_pm_implemented(self):
+        '''
+        Returns True if the Page 42h host data-path FDD pm advertisement bit
+        is set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.TX_HOST_FDD_PM_IMPL)))
+
+    @read_only_cached_api_return
+    def _is_host_tx_fed_pm_implemented(self):
+        '''
+        Returns True if the Page 42h host data-path FED pm advertisement bit
+        is set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.TX_HOST_FED_PM_IMPL)))
+
+    # FDD/FED Alarm Advertisement (page 44h)
+
+    @read_only_cached_api_return
+    def _is_media_rx_fdd_alm_implemented(self):
+        '''
+        Returns True if the Page 44h media-lane FDD alarm advertisement bit is
+        set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.MEDIA_RX_FDD_ALM_IMPL)))
+
+    @read_only_cached_api_return
+    def _is_media_rx_fed_alm_implemented(self):
+        '''
+        Returns True if the Page 44h media-lane FED alarm advertisement bit is
+        set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.MEDIA_RX_FED_ALM_IMPL)))
+
+    @read_only_cached_api_return
+    def _is_host_tx_fdd_alm_implemented(self):
+        '''
+        Returns True if the Page 44h host data-path FDD alarm advertisement bit
+        is set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.HOST_TX_FDD_ALM_IMPL)))
+
+    @read_only_cached_api_return
+    def _is_host_tx_fed_alm_implemented(self):
+        '''
+        Returns True if the Page 44h host data-path FED alarm advertisement bit
+        is set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.HOST_TX_FED_ALM_IMPL)))
+
+    # Host Lane Provisioning Advertisement (page 45h)
+
+    @read_only_cached_api_return
+    def _is_fed_mon_enable_implemented(self):
+        '''
+        Returns True if the Page 45h FED monitoring enable advertisement bit is set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.HOST_FED_MON_EN_IMPL)))
+    
+    @read_only_cached_api_return
+    def _is_fdd_mon_enable_implemented(self):
+        '''
+        Returns True if the Page 45h FDD monitoring enable advertisement bit is set.
+        '''
+        return (self.is_coherent_module() and not self.is_flat_memory()
+                and bool(self.xcvr_eeprom.read(consts.HOST_FDD_MON_EN_IMPL)))
+
+    def get_supported_fdd_fed_ber_config(self):
+        '''
+        Returns the (min, max) BER threshold that the FDD/FED raise/clear knobs
+        accept.
+        '''
+        return 0.0, 1.0
+
+    def get_transceiver_media_fdd_fed_config(self):
+        '''
+        Returns the media-lane FDD/FED BER threshold configuration (Page 30h)
+        '''
+        config = dict()
+        if self._is_media_rx_fdd_pm_implemented():
+            config['media_fdd_raise_thresh'] = get_F16(self.xcvr_eeprom.read(consts.FDD_RAISE_THRESH))
+            config['media_fdd_clear_thresh'] = get_F16(self.xcvr_eeprom.read(consts.FDD_CLEAR_THRESH))
+            config['media_fdd_enable'] = bool(self.xcvr_eeprom.read(consts.FDD_ENABLE))
+        if self._is_media_rx_fed_pm_implemented():
+            config['media_fed_raise_thresh'] = get_F16(self.xcvr_eeprom.read(consts.FED_RAISE_THRESH))
+            config['media_fed_clear_thresh'] = get_F16(self.xcvr_eeprom.read(consts.FED_CLEAR_THRESH))
+            config['media_fed_enable'] = bool(self.xcvr_eeprom.read(consts.FED_ENABLE))
+        return config
+
+    def get_transceiver_media_fdd_fed_flags(self):
+        '''
+        Returns the latched media-lane FDD/FED PM flags (Page 33h)
+        '''
+        fdd_supported = self._is_media_rx_fdd_alm_implemented()
+        fed_supported = self._is_media_rx_fed_alm_implemented()
+        if not fdd_supported and not fed_supported:
+            return {}
+        values = self.xcvr_eeprom.read(consts.MEDIA_FDD_FED_FLAGS)
+        if values is None:
+            return None
+        flags = dict()
+        if fdd_supported:
+            flags['media_rx_fdd_asserted'] = bool(values[consts.L_RX_FDD_PM])
+        if fed_supported:
+            flags['media_rx_fed_asserted'] = bool(values[consts.L_RX_FED_PM])
+        return flags
+
+    def get_transceiver_host_fdd_fed_config(self):
+        '''
+        Returns the host data-path FDD/FED BER threshold configuration (Page 38h)
+        '''
+        config = dict()
+        if self._is_host_tx_fdd_pm_implemented():
+            config['host_fdd_act_thresh'] = get_F16(self.xcvr_eeprom.read(consts.FDD_ACT_BER_THRESH))
+            config['host_fdd_clear_thresh'] = get_F16(self.xcvr_eeprom.read(consts.FDD_CLR_BER_THRESH))
+            config['host_fdd_enable'] = bool(self.xcvr_eeprom.read(consts.FDD_MON_ENABLE))
+        if self._is_host_tx_fed_pm_implemented():
+            config['host_fed_act_thresh'] = get_F16(self.xcvr_eeprom.read(consts.FED_ACT_BER_THRESH))
+            config['host_fed_clear_thresh'] = get_F16(self.xcvr_eeprom.read(consts.FED_CLR_BER_THRESH))
+            config['host_fed_enable'] = bool(self.xcvr_eeprom.read(consts.FED_MON_ENABLE))
+        return config
+
+    def get_transceiver_host_fdd_fed_flags(self):
+        '''
+        Returns the latched host data-path FDD/FED PM flags (Page 3Bh)
+        '''
+        values = self.xcvr_eeprom.read(consts.HOST_FDD_FED_FLAGS)
+        if values is None:
+            return {}
+        flags = dict()
+        if self._is_host_tx_fdd_alm_implemented():
+            flags['host_tx_fdd_asserted'] = bool(values[consts.L_TX_FDD_PM])
+        if self._is_host_tx_fed_alm_implemented():
+            flags['host_tx_fed_asserted'] = bool(values[consts.L_TX_FED_PM])
+        return flags
+
+    def get_transceiver_fdd_fed_config(self):
+        '''
+        Returns the combined media-lane and host data-path FDD/FED BER threshold
+        configuration. Only the sides the module advertises are present.
+        '''
+        config = dict()
+        config.update(self.get_transceiver_media_fdd_fed_config())
+        config.update(self.get_transceiver_host_fdd_fed_config())
+        return config
+
+    def get_transceiver_fdd_fed_flags(self):
+        '''
+        Returns the combined latched media-lane and host data-path FDD/FED PM
+        flags. Only the sides the module advertises are present.
+        '''
+        flags = dict()
+        flags.update(self.get_transceiver_media_fdd_fed_flags())
+        flags.update(self.get_transceiver_host_fdd_fed_flags())
+        return flags
+
+    def _write_ber_threshold(self, field, value):
+        '''
+        Encodes value as F16 and writes it to field.
+        Returns True on success, False if the value is out of range or the
+        write fails.
+        '''
+        raw = set_F16(value)
+        if raw is None:
+            return False
+        return self._write_and_verify(field, raw)
+
+    def _write_and_verify(self, field, value):
+        '''Write a configuration field and verify that the module accepted it.'''
+        try:
+            if not self.xcvr_eeprom.write(field, value):
+                return False
+            time.sleep(0.01)
+            readback = self.xcvr_eeprom.read(field)
+        except (AssertionError, KeyError, TypeError, ValueError):
+            return False
+        if readback is None:
+            return False
+        if isinstance(readback, bool):
+            return readback == bool(value)
+        return readback == value
+
+    def set_transceiver_media_fdd_fed_config(self, config):
+        '''
+        Writes media-lane FDD/FED BER threshold configuration (Page 30h)
+        '''
+        if not isinstance(config, dict):
+            return False
+        status = True
+
+        fdd_keys = ('media_fdd_raise_thresh', 'media_fdd_clear_thresh', 'media_fdd_enable')
+        if any(k in config for k in fdd_keys):
+            fdd_supported = self._is_media_rx_fdd_pm_implemented()
+            if not fdd_supported:
+                status = False
+            raise_ber = config.get('media_fdd_raise_thresh')
+            clear_ber = config.get('media_fdd_clear_thresh')
+            if 'media_fdd_raise_thresh' in config and fdd_supported:
+                status &= self._write_ber_threshold(consts.FDD_RAISE_THRESH, raise_ber)
+            if 'media_fdd_clear_thresh' in config and fdd_supported:
+                status &= self._write_ber_threshold(consts.FDD_CLEAR_THRESH, clear_ber)
+            if 'media_fdd_enable' in config and fdd_supported:
+                status &= self._write_and_verify(consts.FDD_ENABLE, int(bool(config['media_fdd_enable'])))
+
+        fed_keys = ('media_fed_raise_thresh', 'media_fed_clear_thresh', 'media_fed_enable')
+        if any(k in config for k in fed_keys):
+            fed_supported = self._is_media_rx_fed_pm_implemented()
+            if not fed_supported:
+                status = False
+            raise_ber = config.get('media_fed_raise_thresh')
+            clear_ber = config.get('media_fed_clear_thresh')
+            if 'media_fed_raise_thresh' in config and fed_supported:
+                status &= self._write_ber_threshold(consts.FED_RAISE_THRESH, raise_ber)
+            if 'media_fed_clear_thresh' in config and fed_supported:
+                status &= self._write_ber_threshold(consts.FED_CLEAR_THRESH, clear_ber)
+            if 'media_fed_enable' in config and fed_supported:
+                status &= self._write_and_verify(consts.FED_ENABLE, int(bool(config['media_fed_enable'])))
+
+        return status
+
+    def set_transceiver_host_fdd_fed_config(self, config):
+        '''
+        Writes host data-path FDD/FED BER threshold configuration (Page 38h)
+        '''
+        if not isinstance(config, dict):
+            return False
+        status = True
+
+        fdd_threshold_keys = ('host_fdd_act_thresh', 'host_fdd_clear_thresh')
+        if any(k in config for k in fdd_threshold_keys):
+            fdd_supported = self._is_host_tx_fdd_pm_implemented()
+            if not fdd_supported:
+                status = False
+            act_ber = config.get('host_fdd_act_thresh')
+            clr_ber = config.get('host_fdd_clear_thresh')
+            if 'host_fdd_act_thresh' in config and fdd_supported:
+                status &= self._write_ber_threshold(consts.FDD_ACT_BER_THRESH, act_ber)
+            if 'host_fdd_clear_thresh' in config and fdd_supported:
+                status &= self._write_ber_threshold(consts.FDD_CLR_BER_THRESH, clr_ber)
+        if 'host_fdd_enable' in config:
+            if not self._is_host_tx_fdd_pm_implemented():
+                status = False
+            else:
+                status &= self._write_and_verify(consts.FDD_MON_ENABLE, int(bool(config['host_fdd_enable'])))
+
+        fed_threshold_keys = ('host_fed_act_thresh', 'host_fed_clear_thresh')
+        if any(k in config for k in fed_threshold_keys):
+            fed_supported = self._is_host_tx_fed_pm_implemented()
+            if not fed_supported:
+                status = False
+            act_ber = config.get('host_fed_act_thresh')
+            clr_ber = config.get('host_fed_clear_thresh')
+            if 'host_fed_act_thresh' in config and fed_supported:
+                status &= self._write_ber_threshold(consts.FED_ACT_BER_THRESH, act_ber)
+            if 'host_fed_clear_thresh' in config and fed_supported:
+                status &= self._write_ber_threshold(consts.FED_CLR_BER_THRESH, clr_ber)
+        if 'host_fed_enable' in config:
+            if not self._is_host_tx_fed_pm_implemented():
+                status = False
+            else:
+                status &= self._write_and_verify(consts.FED_MON_ENABLE, int(bool(config['host_fed_enable'])))
+
+        return status
+
+    def set_transceiver_fdd_fed_config(self, config):
+        '''
+        Convenience aggregator applying both media-lane and host data-path
+        FDD/FED configuration present in config.
+
+        Returns True if all requested writes succeed, False otherwise.
+        '''
+        if not isinstance(config, dict):
+            return False
+        status = True
+        media_keys = ('media_fdd_raise_thresh', 'media_fdd_clear_thresh', 'media_fdd_enable',
+                      'media_fed_raise_thresh', 'media_fed_clear_thresh', 'media_fed_enable')
+        host_keys = ('host_fdd_act_thresh', 'host_fdd_clear_thresh', 'host_fdd_enable',
+                     'host_fed_act_thresh', 'host_fed_clear_thresh', 'host_fed_enable')
+        if any(k in config for k in media_keys):
+            status &= self.set_transceiver_media_fdd_fed_config(config)
+        if any(k in config for k in host_keys):
+            status &= self.set_transceiver_host_fdd_fed_config(config)
+        return status
+
+>>>>>>> 9322fc3 (NOS-11650: Updated C-CMIS FDD/FED memory maps and constants (#149))
     def get_pm_all(self):
         '''
         This function returns the PMs reported in Page 34h and 35h in OIF C-CMIS document

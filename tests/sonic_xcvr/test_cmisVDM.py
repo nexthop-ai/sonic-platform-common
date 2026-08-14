@@ -5,6 +5,7 @@ from sonic_platform_base.sonic_xcvr.api.public.cmisVDM import CmisVdmApi, PAGE_S
 from sonic_platform_base.sonic_xcvr.mem_maps.public.cmis import CmisMemMap
 from sonic_platform_base.sonic_xcvr.xcvr_eeprom import XcvrEeprom
 from sonic_platform_base.sonic_xcvr.codes.public.cmis import CmisCodes
+from sonic_platform_base.sonic_xcvr.utils.common import get_F16
 
 class TestVDM(object):
     codes = CmisCodes
@@ -17,12 +18,6 @@ class TestVDM(object):
         eeprom = XcvrEeprom(MagicMock(return_value=None), MagicMock(), self.mem_map)
         self.api = CmisVdmApi(eeprom)
 
-    @pytest.mark.parametrize("input_param, expected", [
-        (0x9200, 0.000512)
-    ])
-    def test_get_F16(self, input_param, expected):
-        result = self.api.get_F16(input_param)
-        assert result == expected
 
     @pytest.mark.parametrize("input_param, mock_response, expected", [
         (

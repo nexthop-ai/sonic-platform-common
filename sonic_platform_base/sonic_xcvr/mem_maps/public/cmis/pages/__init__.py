@@ -29,8 +29,19 @@ from .page11 import CmisLaneDatapathStatusPage
 from .page12 import CmisTunableLaserCtrlStatusPage
 from .page13 import CmisModulePerfDiagCtrlPage
 from .page2f import CmisVdmAdvertisingCtrlPage
+from .page30 import CCmisMediaLaneConfigThresholdsPage
+from .page33 import CCmisMediaLaneFlagsStatusPage
 from .page34 import CCmisMediaLaneFecPmPage
 from .page35 import CCmisMediaLaneLinkPmPage
+<<<<<<< HEAD
+=======
+from .page38 import CCmisDataPathHostIfConfigPage
+from .page3a import CCmisDataPathHostIfPmPage
+from .page3b import CCmisDataPathHostIfFlagsPage
+from .page42 import CCmisPmAdvertisementPage
+from .page44 import CCmisAlarmAdvertisementPage
+from .page45 import CCmisHostLaneProvisioningAdvertisementPage
+>>>>>>> 9322fc3 (NOS-11650: Updated C-CMIS FDD/FED memory maps and constants (#149))
 from .page9f import CmisCdbMessagePage
 from .page9f_cdb import CdbLplMessagePage
 
@@ -58,8 +69,19 @@ __all__ = [
     'CmisTunableLaserCtrlStatusPage',
     'CmisModulePerfDiagCtrlPage',
     'CmisVdmAdvertisingCtrlPage',
+    'CCmisMediaLaneConfigThresholdsPage',
+    'CCmisMediaLaneFlagsStatusPage',
     'CCmisMediaLaneFecPmPage',
     'CCmisMediaLaneLinkPmPage',
+<<<<<<< HEAD
+=======
+    'CCmisDataPathHostIfConfigPage',
+    'CCmisDataPathHostIfPmPage',
+    'CCmisDataPathHostIfFlagsPage',
+    'CCmisPmAdvertisementPage',
+    'CCmisAlarmAdvertisementPage',
+    'CCmisHostLaneProvisioningAdvertisementPage',
+>>>>>>> 9322fc3 (NOS-11650: Updated C-CMIS FDD/FED memory maps and constants (#149))
     'CmisCdbMessagePage',
     'CdbLplMessagePage',
 ]

@@ -6,6 +6,8 @@
 
 from ...fields import consts
 from ..xcvr_api import XcvrApi
+from ...utils.cache import read_only_cached_api_return
+from ...utils.common import get_F16
 import struct
 import time
 
@@ -57,15 +59,6 @@ class CmisVdmApi(XcvrApi):
             offset = page * PAGE_SIZE + PAGE_OFFSET
             self._vdm_descriptor[page] = self.xcvr_eeprom.read_raw(offset, PAGE_SIZE)
         return self._vdm_descriptor[page]
-
-    def get_F16(self, value):
-        '''
-        This function converts raw data to "F16" format defined in cmis.
-        '''
-        scale_exponent = (value >> 11) & 0x1f
-        mantissa = value & 0x7ff
-        result = mantissa*10**(scale_exponent-24)
-        return result
 
     def get_vdm_page(self, page, VDM_flag_page, field_option=ALL_FIELD, observable_type=VDM_OBSERVABLE_ALL):
         '''
@@ -156,7 +149,7 @@ class CmisVdmApi(XcvrApi):
                     vdm_value = struct.unpack('>H',vdm_value_raw)[0] * scale
                 elif vdm_format == 'F16':
                     vdm_value_int = struct.unpack('>H',vdm_value_raw)[0]
-                    vdm_value = self.get_F16(vdm_value_int)
+                    vdm_value = get_F16(vdm_value_int)
                 else:
                     continue
             else:
@@ -187,10 +180,10 @@ class CmisVdmApi(XcvrApi):
                     vdm_thrsh_low_alarm_int = struct.unpack('>H', vdm_thrsh_low_alarm_raw)[0]
                     vdm_thrsh_high_warn_int = struct.unpack('>H', vdm_thrsh_high_warn_raw)[0]
                     vdm_thrsh_low_warn_int = struct.unpack('>H', vdm_thrsh_low_warn_raw)[0]
-                    vdm_thrsh_high_alarm = self.get_F16(vdm_thrsh_high_alarm_int)
-                    vdm_thrsh_low_alarm = self.get_F16(vdm_thrsh_low_alarm_int)
-                    vdm_thrsh_high_warn = self.get_F16(vdm_thrsh_high_warn_int)
-                    vdm_thrsh_low_warn = self.get_F16(vdm_thrsh_low_warn_int)
+                    vdm_thrsh_high_alarm = get_F16(vdm_thrsh_high_alarm_int)
+                    vdm_thrsh_low_alarm = get_F16(vdm_thrsh_low_alarm_int)
+                    vdm_thrsh_high_warn = get_F16(vdm_thrsh_high_warn_int)
+                    vdm_thrsh_low_warn = get_F16(vdm_thrsh_low_warn_int)
                 else:
                     continue
             else:

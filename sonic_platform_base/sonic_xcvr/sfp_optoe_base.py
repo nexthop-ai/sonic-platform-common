@@ -52,6 +52,46 @@ class SfpOptoeBase(SfpBase, OptoeEepromReadWriteMixin):
         api = self.get_xcvr_api()
         return api.get_transceiver_loopback() if api is not None else None
 
+    def get_supported_fdd_fed_ber_config(self):
+        api = self.get_xcvr_api()
+        return api.get_supported_fdd_fed_ber_config() if api is not None else None
+
+    def get_transceiver_media_fdd_fed_config(self):
+        api = self.get_xcvr_api()
+        return api.get_transceiver_media_fdd_fed_config() if api is not None else None
+
+    def get_transceiver_media_fdd_fed_flags(self):
+        api = self.get_xcvr_api()
+        return api.get_transceiver_media_fdd_fed_flags() if api is not None else None
+
+    def get_transceiver_host_fdd_fed_config(self):
+        api = self.get_xcvr_api()
+        return api.get_transceiver_host_fdd_fed_config() if api is not None else None
+
+    def get_transceiver_host_fdd_fed_flags(self):
+        api = self.get_xcvr_api()
+        return api.get_transceiver_host_fdd_fed_flags() if api is not None else None
+
+    def get_transceiver_fdd_fed_config(self):
+        api = self.get_xcvr_api()
+        return api.get_transceiver_fdd_fed_config() if api is not None else None
+
+    def get_transceiver_fdd_fed_flags(self):
+        api = self.get_xcvr_api()
+        return api.get_transceiver_fdd_fed_flags() if api is not None else None
+
+    def set_transceiver_media_fdd_fed_config(self, config):
+        api = self.get_xcvr_api()
+        return api.set_transceiver_media_fdd_fed_config(config) if api is not None else False
+
+    def set_transceiver_host_fdd_fed_config(self, config):
+        api = self.get_xcvr_api()
+        return api.set_transceiver_host_fdd_fed_config(config) if api is not None else False
+
+    def set_transceiver_fdd_fed_config(self, config):
+        api = self.get_xcvr_api()
+        return api.set_transceiver_fdd_fed_config(config) if api is not None else False
+
     def is_coherent_module(self):
         api = self.get_xcvr_api()
         return api.is_coherent_module() if api is not None else None
