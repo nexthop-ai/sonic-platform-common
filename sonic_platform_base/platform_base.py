@@ -7,13 +7,19 @@
     the ability to interact with all available chassis on the platform.
 """
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .chassis_base import ChassisBase
+
+
 class PlatformBase(object):
 
     def __init__(self):
         # ChassisBase-derived object representing the platform's chassis
-        self._chassis = None
+        self._chassis: "ChassisBase | None" = None
 
-    def get_chassis(self):
+    def get_chassis(self) -> "ChassisBase | None":
         """
         Retrieves the chassis for this platform
 

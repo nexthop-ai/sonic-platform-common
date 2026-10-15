@@ -6,6 +6,8 @@
 """
 
 import sys
+from typing import TYPE_CHECKING
+
 try:
     from sonic_py_common import device_info
 except ImportError:
@@ -14,6 +16,10 @@ except ImportError:
     # environments.
     device_info = None
 from . import device_base
+
+if TYPE_CHECKING:
+    from .sonic_eeprom.eeprom_tlvinfo import TlvInfoDecoder
+    from .watchdog_base import WatchdogBase
 
 class ChassisBase(device_base.DeviceBase):
     """
@@ -82,10 +88,10 @@ class ChassisBase(device_base.DeviceBase):
         self._port_lists_validated = False
 
         # Object derived from WatchdogBase for interacting with hardware watchdog
-        self._watchdog = None
+        self._watchdog: "WatchdogBase | None" = None
 
         # Object derived from eeprom_tlvinfo.TlvInfoDecoder indicating the eeprom on the chassis
-        self._eeprom = None
+        self._eeprom: "TlvInfoDecoder | None" = None
 
         # System status LED
         self._status_led = None
@@ -896,7 +902,7 @@ class ChassisBase(device_base.DeviceBase):
             return True
         raise NotImplementedError
 
-    def set_status_led(self, color):
+    def set_status_led(self, color) -> bool:
         """
         Sets the state of the system LED
 
@@ -912,7 +918,7 @@ class ChassisBase(device_base.DeviceBase):
             return False
         raise NotImplementedError
 
-    def get_status_led(self):
+    def get_status_led(self) -> str:
         """
         Gets the state of the system LED
 
@@ -956,7 +962,7 @@ class ChassisBase(device_base.DeviceBase):
     # Other methods
     ##############################################
 
-    def get_watchdog(self):
+    def get_watchdog(self) -> "WatchdogBase | None":
         """
         Retreives hardware watchdog device on this chassis
 
@@ -966,12 +972,12 @@ class ChassisBase(device_base.DeviceBase):
         """
         return self._watchdog
 
-    def get_eeprom(self):
+    def get_eeprom(self) -> "TlvInfoDecoder | None":
         """
         Retreives eeprom device on this chassis
 
         Returns:
-            An object derived from WatchdogBase representing the hardware
+            An object derived from TlvInfoDecoder representing the hardware
             eeprom device
         """
         return self._eeprom
