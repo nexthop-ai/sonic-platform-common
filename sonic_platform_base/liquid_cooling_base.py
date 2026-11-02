@@ -24,6 +24,7 @@ class LeakSeverity(Enum):
     CRITICAL = "CRITICAL"
 
 
+<<<<<<< HEAD
 class SystemLeakStatus:
     """System-level (aggregate) leak status tokens written by thermalctld to the
     SYSTEM_LEAK_STATUS table's device_leak_status field and consumed by bmcctld.
@@ -37,6 +38,20 @@ class SystemLeakStatus:
     MAJOR    = "MAJOR"
     MINOR    = "MINOR"
     NONE     = "None"
+=======
+class LeakSensorHealth(Enum):
+    """Tri-state health of a leak sensor.
+
+    The ``.value`` is the string published to STATE_DB / shown in the CLI.
+    ``NA`` ("N/A") means the sensor's health could not be determined (e.g. the platform
+    exposes no SNS_OK signal, or it could not be read); it is surfaced for
+    visibility and is treated as OK by
+    :meth:`LeakageSensorBase.is_leak_sensor_ok`.
+    """
+    OK    = "Good"
+    FAULT = "Fault"
+    NA    = "N/A"
+>>>>>>> 720858e (NOS-19263: Add NA (health-unknown) state to leak sensor health (#225))
 
 
 class LeakageSensorBase(SensorBase):
@@ -51,7 +66,7 @@ class LeakageSensorBase(SensorBase):
                  severity: LeakSeverity = LeakSeverity.CRITICAL):
         self.name: str = name
         self.leaking: bool = False
-        self.leak_sensor_ok: bool = True
+        self.leak_sensor_health: LeakSensorHealth = LeakSensorHealth.OK
         self.leak_type: str = type or 'unknown'
         self.leak_location: str = location or 'unknown'
         self.leak_severity = severity
@@ -81,14 +96,42 @@ class LeakageSensorBase(SensorBase):
         """
         return self.leaking
 
+    @property
+    def leak_sensor_ok(self) -> bool:
+        """Backward-compatible boolean view of sensor health (NA counts as OK).
+
+        Platforms that still do ``self.leak_sensor_ok = True/False`` keep
+        working: the value is mapped onto :class:`LeakSensorHealth`
+        (OK / FAULT).
+        """
+        return self.leak_sensor_health != LeakSensorHealth.FAULT
+
+    @leak_sensor_ok.setter
+    def leak_sensor_ok(self, ok: bool) -> None:
+        self.leak_sensor_health = (
+            LeakSensorHealth.OK if ok else LeakSensorHealth.FAULT
+        )
+
     def is_leak_sensor_ok(self) -> bool:
         """
-        Retrieves the state of leak sensor whether it is ok or faulty
+        Retrieves whether the leak sensor is usable (not faulted).
+
+        NA (health could not be determined) is treated as OK — it is reported
+        for visibility, not acted on as a fault.
 
         Returns:
-            bool: True if leak sensor is ok, False if it is faulty
+            bool: False only if the sensor health is FAULT; True for OK or NA
         """
-        return self.leak_sensor_ok
+        return self.leak_sensor_health != LeakSensorHealth.FAULT
+
+    def get_leak_sensor_health(self) -> LeakSensorHealth:
+        """
+        Retrieves the tri-state health of the leak sensor.
+
+        Returns:
+            LeakSensorHealth: OK, FAULT, or NA (not available / undeterminable).
+        """
+        return self.leak_sensor_health
 
     def get_leak_sensor_type(self) -> str:
         """

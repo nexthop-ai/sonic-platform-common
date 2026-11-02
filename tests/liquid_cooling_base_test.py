@@ -8,6 +8,7 @@ import pytest
 from sonic_platform_base.liquid_cooling_base import LeakageSensorBase
 from sonic_platform_base.liquid_cooling_base import LeakSensorProfileBase
 from sonic_platform_base.liquid_cooling_base import LeakSeverity
+from sonic_platform_base.liquid_cooling_base import LeakSensorHealth
 from sonic_platform_base.liquid_cooling_base import LiquidCoolingBase
 
 class TestLeakageSensorBase:
@@ -288,6 +289,60 @@ class TestLeakageSensorBase:
         assert sensor.is_leak_sensor_ok() == False
         assert sensor.get_leak_sensor_type() == "spot"
         assert sensor.get_leak_severity() is LeakSeverity.MINOR
+
+    @staticmethod
+    def test_leak_sensor_health_enum_values():
+        '''
+        LeakSensorHealth string values are what gets published / shown in the CLI
+        '''
+        assert LeakSensorHealth.OK.value == "Good"
+        assert LeakSensorHealth.FAULT.value == "Fault"
+        assert LeakSensorHealth.NA.value == "N/A"
+
+    @staticmethod
+    def test_leak_sensor_health_default_ok():
+        '''
+        Health defaults to OK and is_leak_sensor_ok() is True
+        '''
+        sensor = LeakageSensorBase("sensor1")
+        assert sensor.get_leak_sensor_health() is LeakSensorHealth.OK
+        assert sensor.is_leak_sensor_ok() is True
+
+    @staticmethod
+    def test_leak_sensor_health_na_treated_as_ok():
+        '''
+        NA health is reported distinctly but treated as OK (not a fault)
+        '''
+        sensor = LeakageSensorBase("sensor1")
+        sensor.leak_sensor_health = LeakSensorHealth.NA
+        assert sensor.get_leak_sensor_health() is LeakSensorHealth.NA
+        assert sensor.is_leak_sensor_ok() is True
+
+    @staticmethod
+    def test_leak_sensor_health_fault():
+        '''
+        FAULT health makes is_leak_sensor_ok() False
+        '''
+        sensor = LeakageSensorBase("sensor1")
+        sensor.leak_sensor_health = LeakSensorHealth.FAULT
+        assert sensor.get_leak_sensor_health() is LeakSensorHealth.FAULT
+        assert sensor.is_leak_sensor_ok() is False
+
+    @staticmethod
+    def test_leak_sensor_ok_property_roundtrip():
+        '''
+        The backward-compat leak_sensor_ok property maps to/from LeakSensorHealth
+        '''
+        sensor = LeakageSensorBase("sensor1")
+        sensor.leak_sensor_ok = False
+        assert sensor.get_leak_sensor_health() is LeakSensorHealth.FAULT
+        assert sensor.leak_sensor_ok is False
+        sensor.leak_sensor_ok = True
+        assert sensor.get_leak_sensor_health() is LeakSensorHealth.OK
+        assert sensor.leak_sensor_ok is True
+        # NA counts as ok through the boolean view
+        sensor.leak_sensor_health = LeakSensorHealth.NA
+        assert sensor.leak_sensor_ok is True
 
 
 class TestLeakSensorProfileBase:
