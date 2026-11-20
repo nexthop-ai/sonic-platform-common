@@ -44,6 +44,12 @@ class TestChassisBase:
                 [chassis.get_change_event, [1000], {}],
                 [chassis.get_dataplane_state, [], {}],
                 [chassis.get_controlplane_state, [], {}],
+<<<<<<< HEAD
+=======
+                [chassis.get_all_devices, ["sfp"], {}],
+                [chassis.get_device, ["sfp", 0], {}],
+                [chassis.get_min_psus, [], {}],
+>>>>>>> fd81b58 (NOS-8394: [chassis_base] Add get_min_psus() (#250))
             ]
 
         for method in not_implemented_methods:

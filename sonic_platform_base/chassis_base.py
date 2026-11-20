@@ -534,6 +534,17 @@ class ChassisBase(device_base.DeviceBase):
 
         return psu
 
+    def get_min_psus(self):
+        """
+        Retrieves the minimum number of power supply units that must deliver
+        power for this chassis to operate at full load
+
+        Returns:
+            A positive integer, the minimum number of power supply units,
+            e.g. 2 on a chassis with 2+2 redundant power supply units
+        """
+        raise NotImplementedError
+
     ##############################################
     # PDB methods
     ##############################################
